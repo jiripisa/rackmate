@@ -42,6 +42,15 @@ extension Channel {
         }
     }
 
+    /// Switches the effect on or off. Unknown IDs are ignored.
+    public mutating func setEffect(effectID: UUID, isOn: Bool) {
+        for rowIndex in effects.indices {
+            guard let index = effects[rowIndex].firstIndex(where: { $0.id == effectID }) else { continue }
+            effects[rowIndex][index].isOn = isOn
+            return
+        }
+    }
+
     /// Removes the effect; a row left empty is dropped. Unknown IDs are ignored.
     public mutating func removeEffect(effectID: UUID) {
         for rowIndex in effects.indices {

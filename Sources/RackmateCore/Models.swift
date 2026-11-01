@@ -149,11 +149,27 @@ public struct InsertEffect: Codable, Equatable, Identifiable, Sendable {
     public var id: UUID
     public var slot: PluginSlot
     public var sidechainIn: AudioChannels?
+    /// The LED switch. An effect that is off stays loaded but leaves the audio graph.
+    public var isOn: Bool
 
-    public init(id: UUID = UUID(), slot: PluginSlot, sidechainIn: AudioChannels? = nil) {
+    public init(id: UUID = UUID(), slot: PluginSlot, sidechainIn: AudioChannels? = nil, isOn: Bool = true) {
         self.id = id
         self.slot = slot
         self.sidechainIn = sidechainIn
+        self.isOn = isOn
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, slot, sidechainIn, isOn
+    }
+
+    /// A file from before `isOn` has no such key; the effect was on.
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        slot = try values.decode(PluginSlot.self, forKey: .slot)
+        sidechainIn = try values.decodeIfPresent(AudioChannels.self, forKey: .sidechainIn)
+        isOn = try values.decodeIfPresent(Bool.self, forKey: .isOn) ?? true
     }
 
     /// Whether the plugin sees the transport. On unless switched off, like every effect.

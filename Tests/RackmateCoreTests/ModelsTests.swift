@@ -73,4 +73,22 @@ struct ModelsTests {
         let file = String(decoding: try JSONEncoder().encode(PluginSlot.fixture()), as: UTF8.self)
         #expect(!file.contains("followsTransport"))
     }
+
+    @Test func anEffectFromAnOlderFileIsOn() throws {
+        let effect = InsertEffect.fixture()
+        var object = try #require(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(effect)) as? [String: Any])
+        object.removeValue(forKey: "isOn")
+        let decoded = try JSONDecoder().decode(InsertEffect.self, from: JSONSerialization.data(withJSONObject: object))
+        #expect(decoded.isOn)
+    }
+
+    @Test(arguments: [true, false])
+    func isOnSurvivesARoundTrip(isOn: Bool) throws {
+        var effect = InsertEffect.fixture()
+        effect.isOn = isOn
+        let again = try JSONDecoder().decode(InsertEffect.self, from: JSONEncoder().encode(effect))
+        #expect(again.isOn == isOn)
+        #expect(again == effect)
+    }
 }

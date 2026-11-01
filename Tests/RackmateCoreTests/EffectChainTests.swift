@@ -82,4 +82,22 @@ struct EffectChainTests {
         channel.setSidechain(effectID: UUID(), to: .mono(0))
         #expect(channel == before)
     }
+
+    @Test func settingOffChangesOnlyThatEffect() {
+        let first = InsertEffect.fixture()
+        let second = InsertEffect.fixture()
+        var channel = Channel.fixture(effectRows: [[first, second]])
+        channel.setEffect(effectID: second.id, isOn: false)
+        #expect(channel.effects[0][0].isOn)
+        #expect(!channel.effects[0][1].isOn)
+        channel.setEffect(effectID: second.id, isOn: true)
+        #expect(channel.effects[0][1].isOn)
+    }
+
+    @Test func anUnknownEffectChangesNothing() {
+        var channel = Channel.fixture(effectRows: [[.fixture()]])
+        let before = channel
+        channel.setEffect(effectID: UUID(), isOn: false)
+        #expect(channel == before)
+    }
 }
