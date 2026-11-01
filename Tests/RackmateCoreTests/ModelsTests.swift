@@ -92,3 +92,22 @@ struct ModelsTests {
         #expect(again == effect)
     }
 }
+
+@Suite("Plugin makers")
+struct PluginMakerTests {
+    private let plugin = PluginID(type: "aumu", subtype: "tb03", manufacturer: "Rlnd")
+
+    @Test func anInstalledPluginGivesItsMaker() {
+        let installed = [PluginInfo(id: plugin, name: "TB-303", vendor: "Roland", kind: .instrument)]
+        #expect(installed.vendor(of: plugin) == "Roland")
+    }
+
+    @Test func aPluginWithNoMakerGivesNothing() {
+        let installed = [PluginInfo(id: plugin, name: "TB-303", vendor: "", kind: .instrument)]
+        #expect(installed.vendor(of: plugin) == nil)
+    }
+
+    @Test func aPluginNotInstalledGivesNothing() {
+        #expect([PluginInfo]().vendor(of: plugin) == nil)
+    }
+}

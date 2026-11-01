@@ -148,7 +148,7 @@ struct ChannelUnit: View {
         .overlay(alignment: .topLeading) {
             Legend("MIDI in")
                 .fixedSize()
-                .offset(y: -12)
+                .offset(y: -15)
         }
     }
 
@@ -200,6 +200,14 @@ struct ChannelUnit: View {
             soundPlace
         }
         .frame(width: 210, alignment: .leading)
+        .overlay(alignment: .topLeading) {
+            if let vendor = model.installedPlugins.vendor(of: channel.slot.plugin) {
+                Legend(vendor)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .offset(y: -15)
+            }
+        }
         .padding(.top, Self.rowsTop)
     }
 

@@ -33,7 +33,7 @@ A channel is one rack unit, at least 132 points high, growing with its content. 
 
 1. **Position:** two-digit number, × to remove, and an LED at the bottom. On an instrument the LED flashes on incoming MIDI. On a standalone effect it flashes on output signal.
 2. **Inputs:** see Displays. The first block's display shares its bottom edge with the plugin picture.
-3. **Identity:** a generic picture and the plugin name on the first row, the preset display on the second. Pictures come from the plugin kind: keys for an instrument, a wave for an effect. A plugin tagged as a sampler by Audio Unit tags gets pads, if the tag is available; otherwise keys.
+3. **Identity:** the plugin's maker as a legend above, in the same line as MIDI in, left out when the plugin is not installed or names none. A generic picture and the plugin name on the first row, the preset display on the second. Pictures come from the plugin kind: keys for an instrument, a wave for an effect. A plugin tagged as a sampler by Audio Unit tags gets pads, if the tag is available; otherwise keys.
 4. **Keys:** two 34-point icon keys, level with the two identity rows. Open plugin, then Follow Start/Stop. A key that is on lights green and glows. Text lives in tooltips: "Open plugin", "Close plugin", "Follow Start/Stop: On", "Follow Start/Stop: Off". Open plugin is dimmed while the plugin cannot open.
 5. **Effects:** see Effects.
 6. **Output:** Audio out display aligned right, under it segmented L and R meters, green, then yellow from 68 %, red from 88 %.

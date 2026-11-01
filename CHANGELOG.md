@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Each channel shows the plugin's maker above its name.
 - Pluginarium is now Rackmate. Your racks, presets and settings come along at the first launch.
 - A configuration is now called a rack.
 - A new look: the panel is a rack of units with ears, screws and brushed metal, with the logo on the Start screen and a gear for Settings.

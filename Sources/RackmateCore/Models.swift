@@ -74,6 +74,13 @@ public struct PluginInfo: Codable, Identifiable, Sendable {
     }
 }
 
+extension [PluginInfo] {
+    /// The plugin's maker, or nil when it is not installed or names none.
+    public func vendor(of plugin: PluginID) -> String? {
+        first { $0.id == plugin }.flatMap { $0.vendor.isEmpty ? nil : $0.vendor }
+    }
+}
+
 /// Device audio channels, zero-based.
 public enum AudioChannels: Codable, Hashable, Sendable {
     case mono(Int)

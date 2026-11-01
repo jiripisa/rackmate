@@ -382,6 +382,7 @@ function stripHtml(strip, index) {
           ${plugin.sidechain ? sidechainInHtml(strip) : ''}
         </div>
         <div class="ident">
+          ${plugin.vendor ? `<span class="legend vendor">${esc(plugin.vendor)}</span>` : ''}
           <div class="ident-top">
             <span class="glyph">${glyphOf(plugin)}</span>
             <h2 class="plugin-name${fault ? ' fault' : ''}" title="${esc(fault ?? plugin.name)}">${esc(plugin.name)}${fault ? `<span class="sr-only">. ${esc(fault)}</span>` : ''}</h2>
