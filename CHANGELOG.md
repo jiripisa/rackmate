@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.0 — 2026-11-01
 
 - Each channel shows the plugin's maker above its name.
 - Pluginarium is now Rackmate. Your racks, presets and settings come along at the first launch.
