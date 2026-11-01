@@ -95,7 +95,7 @@ private struct EffectStage: View {
         .background {
             if isParallel { StageBrackets().stroke(Color.lineStrong, lineWidth: 1) }
         }
-        .reportsFrame(of: .stage(first: row.first?.id ?? UUID()))
+        .reportsFrame(of: row.first.map { .stage(first: $0.id) })
     }
 }
 
@@ -316,6 +316,7 @@ private struct EffectSwitch: View {
                 .frame(width: 22, height: 22)
                 .background { Circle().fill(isHovered && !isFailed ? Color.slotSwitchHover : .clear) }
                 .contentShape(Circle())
+                .panelFocusOutline(outset: 0)
         }
         .buttonStyle(SlotControlStyle())
         .disabled(isFailed)
@@ -341,6 +342,7 @@ private struct EffectMenuButton: View {
                 .foregroundStyle(isHovered ? Color.legend : Color.muted)
                 .frame(width: 18, height: 26)
                 .contentShape(Rectangle())
+                .panelFocusOutline(outset: 0)
         }
         .buttonStyle(SlotControlStyle())
         .onHover { isHovered = $0 }
@@ -508,11 +510,12 @@ struct EffectFramesKey: PreferenceKey {
 }
 
 extension View {
-    /// Tells a drag of an effect where this view is.
-    func reportsFrame(of part: EffectPart) -> some View {
+    /// Tells a drag of an effect where this view is. With no part it tells nothing.
+    func reportsFrame(of part: EffectPart?) -> some View {
         background {
             GeometryReader { proxy in
-                Color.clear.preference(key: EffectFramesKey.self, value: [part: proxy.frame(in: .named(EffectDrag.mixerSpace))])
+                Color.clear.preference(
+                    key: EffectFramesKey.self, value: part.map { [$0: proxy.frame(in: .named(EffectDrag.mixerSpace))] } ?? [:])
             }
         }
     }
