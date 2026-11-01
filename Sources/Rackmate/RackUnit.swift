@@ -204,7 +204,7 @@ enum RackArt {
         context.fillGradient([(0x17181A, 0), (0x101113, 1)], height: size.height)
     }
 
-    static let screwDiameter: CGFloat = 15
+    static let screwDiameter: CGFloat = 18
 
     /// What a screw is drawn with, set by hand for each scale, as the cross has a few pixels to work with.
     private struct ScrewTuning {
@@ -224,13 +224,13 @@ enum RackArt {
     private static let screwAt1x = screwImage(
         scale: 1,
         ScrewTuning(
-            crossRise: 0, crossWidth: 1.7, armAcross: 3.6, armDown: 3.4,
-            highlightRise: 0.7, highlightBlur: 0.9, highlightAlpha: 0xB0, glintDrop: 5, glintRadius: 1.3))
+            crossRise: 0, crossWidth: 2, armAcross: 4.2, armDown: 4,
+            highlightRise: 0.8, highlightBlur: 1, highlightAlpha: 0xB0, glintDrop: 6, glintRadius: 1.5))
     private static let screwAt2x = screwImage(
         scale: 2,
         ScrewTuning(
-            crossRise: 0.5, crossWidth: 2, armAcross: 3.6, armDown: 3.4,
-            highlightRise: 0.5, highlightBlur: 0.8, highlightAlpha: 0xC0, glintDrop: 4.5, glintRadius: 1.1))
+            crossRise: 0.5, crossWidth: 2.5, armAcross: 4.3, armDown: 4.1,
+            highlightRise: 0.6, highlightBlur: 1, highlightAlpha: 0xC0, glintDrop: 5.5, glintRadius: 1.3))
 
     /// The screw for a screen of `scale`.
     static func screw(scale: CGFloat) -> Image {
@@ -260,22 +260,22 @@ enum RackArt {
             context.restoreGState()
 
             context.saveGState()
-            context.addEllipse(in: ring.insetBy(dx: 0.5, dy: 0.5))
+            context.addEllipse(in: ring.insetBy(dx: 0.6, dy: 0.6))
             context.clip()
             if let dome = gradient([(0x4A4846, 0), (0x2D2C2B, 0.4), (0x151514, 0.72), (0x070707, 1)]) {
-                let lit = CGPoint(x: center.x, y: center.y - 2.7)
-                context.drawRadialGradient(dome, startCenter: lit, startRadius: 0, endCenter: lit, endRadius: 8.6, options: .drawsAfterEndLocation)
+                let lit = CGPoint(x: center.x, y: center.y - 3.2)
+                context.drawRadialGradient(dome, startCenter: lit, startRadius: 0, endCenter: lit, endRadius: 10.3, options: .drawsAfterEndLocation)
             }
-            context.fillGlow(0x8E8C88, [(0, 0.84), (0x38, 0.93), (0, 1)], at: CGPoint(x: center.x, y: center.y + 1.7), radius: 8.4)
-            context.fillGlow(0xB9B6AE, [(0x50, 0), (0x24, 0.6), (0, 1)], at: cross, radius: 4.4)
-            context.fillGlow(0xE8E5DE, [(0xC8, 0), (0x88, 0.5), (0, 1)], at: CGPoint(x: cross.x, y: cross.y - 2.5), radius: 2.7)
+            context.fillGlow(0x8E8C88, [(0, 0.84), (0x38, 0.93), (0, 1)], at: CGPoint(x: center.x, y: center.y + 2), radius: 10.1)
+            context.fillGlow(0xB9B6AE, [(0x50, 0), (0x24, 0.6), (0, 1)], at: cross, radius: 5.3)
+            context.fillGlow(0xE8E5DE, [(0xC8, 0), (0x88, 0.5), (0, 1)], at: CGPoint(x: cross.x, y: cross.y - 3), radius: 3.2)
 
             context.setStrokeColor(cgColor(0x010101))
             context.setLineWidth(tuning.crossWidth)
             context.setLineCap(.round)
             // The recess casts the highlight, which stops at its upper edges.
             context.saveGState()
-            context.clip(to: CGRect(x: ring.minX, y: ring.minY, width: ring.width, height: cross.y + 0.4 - ring.minY))
+            context.clip(to: CGRect(x: ring.minX, y: ring.minY, width: ring.width, height: cross.y + 0.5 - ring.minY))
             context.setShadow(
                 offset: CGSize(width: 0, height: tuning.highlightRise * scale), blur: tuning.highlightBlur * scale,
                 color: cgColor(0xF2EFE8, alpha: tuning.highlightAlpha))
