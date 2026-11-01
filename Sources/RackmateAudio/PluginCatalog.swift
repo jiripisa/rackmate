@@ -1,3 +1,4 @@
+import AVFoundation
 import AudioToolbox
 import RackmateCore
 
@@ -67,5 +68,11 @@ public enum PluginCatalog {
             }
         }
         return result
+    }
+
+    /// Whether the Audio Unit's tags call it a sampler. Few plugins carry tags, and asking loads nothing.
+    public static func isSampler(_ plugin: PluginID) -> Bool {
+        let components = AVAudioUnitComponentManager.shared().components(matching: plugin.componentDescription)
+        return components.contains { $0.allTagNames.contains("Sampler") }
     }
 }

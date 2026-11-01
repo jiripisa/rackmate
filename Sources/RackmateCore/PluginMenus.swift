@@ -6,6 +6,8 @@ public enum MenuEntry<Action> {
     case hint(String)
     case separator
     case item(String, action: Action, isCurrent: Bool = false, isEnabled: Bool = true)
+    /// `.channel-grid` and `.route-grid`: lines side by side, read row by row.
+    case grid(columns: Int, cells: [MenuCell<Action>])
 
     public func map<Other>(_ transform: (Action) -> Other) -> MenuEntry<Other> {
         switch self {
@@ -14,6 +16,8 @@ public enum MenuEntry<Action> {
         case .separator: .separator
         case .item(let title, let action, let isCurrent, let isEnabled):
             .item(title, action: transform(action), isCurrent: isCurrent, isEnabled: isEnabled)
+        case .grid(let columns, let cells):
+            .grid(columns: columns, cells: cells.map { MenuCell($0.title, action: transform($0.action), isCurrent: $0.isCurrent) })
         }
     }
 }
@@ -21,6 +25,21 @@ public enum MenuEntry<Action> {
 extension MenuEntry: Equatable where Action: Equatable {}
 extension MenuEntry: Sendable where Action: Sendable {}
 
+/// One line of a grid.
+public struct MenuCell<Action> {
+    public var title: String
+    public var action: Action
+    public var isCurrent: Bool
+
+    public init(_ title: String, action: Action, isCurrent: Bool = false) {
+        self.title = title
+        self.action = action
+        self.isCurrent = isCurrent
+    }
+}
+
+extension MenuCell: Equatable where Action: Equatable {}
+extension MenuCell: Sendable where Action: Sendable {}
 
 public enum ConfigurationMenuAction: Equatable, Sendable {
     case load(UUID)
@@ -44,8 +63,8 @@ public enum PresetMenuAction: Equatable, Sendable {
     case save
 }
 
-/// What the menus of a plugin hold, `fxMenuHtml`, `presetMenuHtml` and `sidechainMenuHtml` of
-/// `ui-prototype/app.js`.
+/// What the menus of a plugin and a channel hold, `fxMenuHtml`, `presetMenuHtml`, `sidechainMenuHtml`,
+/// `midiChannelMenuHtml`, `midiDeviceMenuHtml` and `routeMenuHtml` of `ui-prototype/app.js`.
 public enum PluginMenus {
 
     /// `sidechain` is what the plugin's sidechain input reads, nil when it has none. A plugin that
@@ -97,5 +116,36 @@ public enum PluginMenus {
     public static func sidechain(deviceInputs: Int, current: AudioChannels?) -> [MenuEntry<AudioChannels?>] {
         let options = ChannelOptions.inputs(deviceInputs: deviceInputs, allowsOff: true, current: current)
         return [.legend("Sidechain in")] + options.map { .item($0.label, action: $0.value, isCurrent: $0.value == current) }
+    }
+
+    /// All, then the sixteen channels in a grid of four.
+    public static func midiChannel(current: MIDIChannelFilter) -> [MenuEntry<MIDIChannelFilter>] {
+        let options = ChannelOptions.midiChannels
+        return [.legend("MIDI channel")]
+            + options.prefix(1).map { .item($0.label, action: $0.value, isCurrent: $0.value == current) }
+            + [grid(columns: 4, options.dropFirst(), current: current)]
+    }
+
+    /// No MIDI, then the system's sources. A source the channel holds stays listed.
+    public static func midiDevice(sources: [String], current: String?) -> [MenuEntry<String?>] {
+        let options = ChannelOptions.midiSources(sources, current: current)
+        let items = options.map { MenuEntry<String?>.item($0.label, action: $0.value, isCurrent: $0.value == current) }
+        return [.legend("MIDI device")] + items.prefix(1) + (items.count > 1 ? [.separator] : []) + items.dropFirst()
+    }
+
+    /// Audio in and sidechain in: Off as a line of its own, then the routes in two columns.
+    public static func audioIn(legend: String, deviceInputs: Int, allowsOff: Bool, current: AudioChannels?) -> [MenuEntry<AudioChannels?>] {
+        let options = ChannelOptions.inputs(deviceInputs: deviceInputs, allowsOff: allowsOff, current: current)
+        return [.legend(legend)]
+            + options.filter { $0.value == nil }.map { .item($0.label, action: nil, isCurrent: current == nil) }
+            + [grid(columns: 2, options.filter { $0.value != nil }, current: current)]
+    }
+
+    public static func audioOut(deviceOutputs: Int, current: AudioChannels) -> [MenuEntry<AudioChannels>] {
+        [.legend("Audio out"), grid(columns: 2, ChannelOptions.outputs(deviceOutputs: deviceOutputs, current: current), current: current)]
+    }
+
+    private static func grid<Value>(columns: Int, _ options: some Sequence<RouteOption<Value>>, current: Value) -> MenuEntry<Value> {
+        .grid(columns: columns, cells: options.map { MenuCell($0.label, action: $0.value, isCurrent: $0.value == current) })
     }
 }

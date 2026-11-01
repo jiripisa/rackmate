@@ -2,26 +2,28 @@ import RackmateAudio
 import RackmateCore
 import SwiftUI
 
-/// The main screen: the top bar over the channels in a row, then the column that adds one.
+/// The main screen: the top bar over the rack, whose units scroll when they do not fit. The vent takes
+/// the height left under the last unit.
 struct MixerScreen: View {
     let model: AppModel
 
     var body: some View {
         VStack(spacing: 0) {
             TopBar(model: model)
-            RackUnit {
-                ScrollView(.horizontal) {
-                    HStack(spacing: 0) {
+            GeometryReader { viewport in
+                ScrollView(.vertical) {
+                    VStack(spacing: 5) {
                         ForEach(Array(channels.enumerated()), id: \.element.id) { index, channel in
-                            ChannelView(channel: channel, index: index)
+                            ChannelUnit(channel: channel, index: index)
                         }
-                        AddColumn { model.beginAddChannel() }
+                        AddRow { model.beginAddChannel() }
+                        VentUnit()
                     }
-                    .frame(maxHeight: .infinity)
+                    .padding(.vertical, 5)
+                    .frame(minHeight: viewport.size.height, alignment: .top)
                 }
-                .scrollIndicators(.automatic)
+                .scrollBounceBehavior(.basedOnSize)
             }
-            .padding(.vertical, 5)
         }
         .environment(model)
     }
@@ -29,29 +31,44 @@ struct MixerScreen: View {
     private var channels: [Channel] { model.session?.configuration.channels ?? [] }
 }
 
-/// `.add-strip`.
-private struct AddColumn: View {
+/// `.add-row`, on a unit of its own.
+private struct AddRow: View {
+    private static let fontSize: CGFloat = 13
+
     let action: () -> Void
 
     @State private var isHovered = false
 
     var body: some View {
-        Button(action: action) {
-            Text("Add instrument or effect")
-                .font(.panelText(12.5))
-                .panelSpacing(0.06, size: 12.5)
-                .textCase(.uppercase)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(isHovered ? Color.legend : Color.muted)
-                .padding(12)
-                .frame(width: 104)
-                .frame(maxHeight: .infinity)
-                .background(isHovered ? Color.panelRaised : Color.clear)
+        RackUnit {
+            Button(action: action) {
+                HStack(spacing: 14) {
+                    Text("+")
+                        .font(.panelText(17))
+                        .frame(width: 28, height: 28)
+                        .overlay { Circle().strokeBorder(color, lineWidth: 1) }
+                        .accessibilityHidden(true)
+                    Text("Add instrument or effect")
+                        .font(.panelText(Self.fontSize))
+                        .panelSpacing(0.14, size: Self.fontSize)
+                        .textCase(.uppercase)
+                }
+                .foregroundStyle(color)
+                .frame(maxWidth: .infinity, minHeight: 52)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 3)
+                        .strokeBorder(isHovered ? Color.lineStrong : Color.line, style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
+                }
                 .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .onHover { isHovered = $0 }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 34)
         }
-        .buttonStyle(.plain)
-        .onHover { isHovered = $0 }
     }
+
+    private var color: Color { isHovered ? .legend : .muted }
 }
 
 /// `.topbar`.

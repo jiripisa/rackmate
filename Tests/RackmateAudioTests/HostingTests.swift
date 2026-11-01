@@ -102,6 +102,12 @@ struct HostingTests {
         #expect(infos.first { $0.id.subtype == "PlFx" }?.kind == .effect)
     }
 
+    @Test("Audio Unit tags tell a sampler from other instruments")
+    func samplerTag() {
+        #expect(PluginCatalog.isSampler(PluginID(type: "aumu", subtype: "samp", manufacturer: "appl")))
+        #expect(!PluginCatalog.isSampler(PluginID(type: "aumu", subtype: "dls ", manufacturer: "appl")))
+    }
+
     @Test("Test units load in process and report their buses")
     func testUnitsLoad() async throws {
         registerTestUnits()

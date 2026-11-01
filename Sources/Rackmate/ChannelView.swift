@@ -2,44 +2,43 @@ import RackmateAudio
 import RackmateCore
 import SwiftUI
 
-/// `.strip`: one instrument or standalone effect, 188 pt wide. Its fields come from the plugin's
-/// capabilities, and its edits go through `AppModel.edit`.
-struct ChannelView: View {
-    static let width: CGFloat = 188
-    /// Room for the Effects legend and part of a row.
-    private static let effectsFloor: CGFloat = 24
+/// `.unit`: one instrument or standalone effect, in the columns position, inputs, identity, keys,
+/// effects and output. Its fields come from the plugin's capabilities, and its edits go through
+/// `AppModel.edit`.
+struct ChannelUnit: View {
+    private static let minimumHeight: CGFloat = 132
+    /// The two rows of identity, which the first input and the keys line up with. The space above them
+    /// is for the legend of the first input.
+    private static let rowsTop: CGFloat = 18
+    private static let topRowHeight: CGFloat = 36
+    private static let bottomRowHeight: CGFloat = 32
+    private static let rowGap: CGFloat = 7
 
     let channel: Channel
     let index: Int
 
     @Environment(AppModel.self) private var model
-    @State private var presetAnchor = CGRect.zero
+    @State private var activity = ChannelActivity()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 11) {
-            header
-            if fields.midiIn { midiIn }
-            if fields.audioIn { audioIn }
-            if fields.sidechainIn { sidechainIn }
-            plugin
-            if hasPluginControls {
-                VStack(spacing: 4) {
-                    openButton
-                    followButton
-                }
+        RackUnit(tint: channel.kind == .effect ? .standalone : .plain) {
+            HStack(alignment: .top, spacing: 12) {
+                position
+                inputs
+                identity
+                keys
+                effects
+                output
             }
-            effects
-            MeterView(channel: channel.id, audio: model.audio)
-            audioOut
+            .padding(.horizontal, 14)
+            // 10 and the 1 point of the plate's edge, which `RackUnit` draws over the content.
+            .padding(.vertical, 11)
+            .frame(minHeight: Self.minimumHeight)
+            .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.top, 12)
-        .padding(.bottom, 12)
-        .padding(.leading, 11)
-        .padding(.trailing, 12)
-        .frame(width: Self.width)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .background(channel.kind == .effect ? Color.panelEffect : Color.clear)
-        .overlay(alignment: .trailing) { Rectangle().fill(Color.line).frame(width: 1) }
+        .task(id: channel.id) { [kind = channel.kind, audio] in
+            await activity.poll(channel: channel.id, kind: kind, audio: audio)
+        }
     }
 
     // MARK: - State
@@ -62,17 +61,21 @@ struct ChannelView: View {
         return channel.effects.joined().contains { audio?.runner?.failure(effect: $0.id) == message }
     }
 
-    private var hasPluginControls: Bool {
+    /// Why the plugin of the channel does not play.
+    private var pluginFault: String? {
         switch status {
-        case .pluginMissing: false
-        case .loadFailed: isFaultOfAnEffect
-        case .loading: isHosted
-        case .ready, .routingUnavailable, nil: true
+        case .pluginMissing: "Plugin not installed on this Mac"
+        case .loadFailed(let message): isFaultOfAnEffect ? nil : "Plugin failed to load: \(message)"
+        default: nil
         }
     }
 
-    private var deviceInputs: Int { model.deviceInputs }
-    private var deviceOutputs: Int { model.deviceOutputs }
+    /// The route the device does not have, such as "Out 15–16".
+    private var missingRoute: String? {
+        if case .routingUnavailable(let label) = status { label } else { nil }
+    }
+
+    private var followsTransportHelp: String { "Follow Start/Stop: \(channel.followsTransport ? "On" : "Off")" }
 
     private func edit(_ change: @escaping (inout Channel) -> Void) {
         let id = channel.id
@@ -82,14 +85,15 @@ struct ChannelView: View {
         }
     }
 
-    // MARK: - Parts
+    // MARK: - Position
 
-    private var header: some View {
-        HStack {
-            Text(String(index + 1))
-                .font(.panelText(12.5))
-                .foregroundStyle(Color.muted)
-            Spacer(minLength: 0)
+    private var position: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(String(format: "%02d", index + 1))
+                .font(.panelDisplay(21))
+                .panelSpacing(0.05, size: 21)
+                .foregroundStyle(Color.legend)
+                .frame(height: 21)
             Button { model.askToRemove(channel) } label: {
                 Text("×")
                     .font(.panelText(15))
@@ -97,196 +101,203 @@ struct ChannelView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(RemoveButtonStyle())
+            .padding(.leading, -5)
             .help("Remove")
             .accessibilityLabel("Remove \(channel.slot.displayName)")
+            Spacer(minLength: 0)
+            ActivityLED(activity: activity)
+                .padding(.leading, 2)
+                .help(channel.kind == .effect ? "Lights when audio comes in" : "Lights when MIDI comes in")
         }
-        .frame(height: 22)
+        .frame(width: 34, alignment: .leading)
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
+    // MARK: - Inputs
+
+    private var inputs: some View {
+        VStack(alignment: .leading, spacing: Self.rowGap) {
+            if fields.midiIn { midiIn }
+            if fields.audioIn {
+                input("Audio in", channel.audioIn, isFirst: !fields.midiIn) { anchor in
+                    model.showAudioInMenu(channel: channel.id, anchor: anchor)
+                }
+            }
+            if fields.sidechainIn {
+                input("Sidechain in", channel.sidechainIn, isFirst: !fields.midiIn && !fields.audioIn) { anchor in
+                    model.showSidechainInMenu(channel: channel.id, anchor: anchor)
+                }
+            }
+        }
+        .frame(width: 92, alignment: .leading)
+        .padding(.top, Self.rowsTop)
+    }
+
+    /// The channel display on the picture's row and the device on the preset's. The legend sits in the
+    /// space above the rows.
     private var midiIn: some View {
-        let sources = audio?.router.sources ?? []
-        let source = channel.midiIn?.sourceName
-        return VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: Self.rowGap) {
+            ChannelDisplay(
+                text: SevenSegment.channelText(channel.midiIn), tone: channel.midiIn == nil ? .dim : .lit, spokenValue: spokenMIDIChannel
+            ) { anchor in
+                model.showMIDIChannelMenu(channel: channel.id, anchor: anchor)
+            }
+            .disabled(channel.midiIn == nil)
+            .frame(height: Self.topRowHeight, alignment: .bottom)
+            deviceValue
+                .frame(height: Self.bottomRowHeight)
+        }
+        .overlay(alignment: .topLeading) {
             Legend("MIDI in")
-            HStack(spacing: 4) {
-                FieldMenu(
-                    title: "MIDI device", options: ChannelOptions.midiSources(sources, current: source), selection: source
-                ) { name in
-                    edit { target in
-                        target.midiIn = name.map { MIDIRoute(sourceName: $0, channel: target.midiIn?.channel ?? .all) }
-                    }
+                .fixedSize()
+                .offset(y: -12)
+        }
+    }
+
+    private var spokenMIDIChannel: String {
+        switch channel.midiIn?.channel {
+        case nil: "Off"
+        case .all: "All"
+        case .channel(let number): "Channel \(number)"
+        }
+    }
+
+    private var deviceValue: some View {
+        let isMissing = channel.midiIn.map { !(audio?.router.sources ?? []).contains($0.sourceName) } ?? false
+        let name = channel.midiIn?.sourceName
+        return DeviceValue(
+            text: isMissing ? "\(name ?? "") is not connected" : name ?? "No MIDI",
+            tone: isMissing ? .fault : name == nil ? .dim : .lit
+        ) { anchor in
+            model.showMIDIDeviceMenu(channel: channel.id, anchor: anchor)
+        }
+    }
+
+    /// `isFirst`: the display shares its bottom edge with the picture, and its legend reaches up into
+    /// the space above the rows.
+    @ViewBuilder
+    private func input(_ legend: String, _ route: AudioChannels?, isFirst: Bool, action: @escaping (CGRect) -> Void) -> some View {
+        let display = RouteDisplay(legend: legend, text: SevenSegment.routeText(route), tone: inputTone(route), action: action)
+        if isFirst {
+            display.frame(height: Self.topRowHeight, alignment: .bottom)
+        } else {
+            display
+        }
+    }
+
+    private func inputTone(_ route: AudioChannels?) -> SegmentTone {
+        guard let route else { return .dim }
+        return route.label(prefix: "In") == missingRoute ? .fault : .lit
+    }
+
+    // MARK: - Identity
+
+    private var identity: some View {
+        VStack(alignment: .leading, spacing: Self.rowGap) {
+            HStack(spacing: 10) {
+                PluginGlyph(kind: .init(channel.kind, isSampler: model.isSampler(channel.slot.plugin)))
+                pluginName
+            }
+            .frame(height: Self.topRowHeight)
+            soundPlace
+        }
+        .frame(width: 210, alignment: .leading)
+        .padding(.top, Self.rowsTop)
+    }
+
+    private var pluginName: some View {
+        let name = channel.slot.displayName
+        // Not `textCase`, which would shout the fault at VoiceOver as well.
+        return Text(name.uppercased())
+            .font(.panelDisplay(31))
+            .panelSpacing(0.04, size: 31)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .truncationMode(.tail)
+            .foregroundStyle(pluginFault == nil ? Color.legend : Color.fault)
+            .offset(y: 1)
+            .help(pluginFault ?? name)
+            .accessibilityLabel(pluginFault.map { "\(name). \($0)" } ?? name)
+    }
+
+    /// The preset, or what stands in for it while there is none to pick.
+    @ViewBuilder private var soundPlace: some View {
+        let sound = model.presetLabel(for: channel.slot)
+        switch status {
+        case .pluginMissing:
+            Button("Replace plugin") { model.beginReplacePlugin(channel: channel.id) }
+                .buttonStyle(.wideKey)
+        case .loading where !isHosted:
+            PresetDisplay(text: "Loading")
+        default:
+            if isHosted, pluginFault == nil {
+                PresetDisplay(text: sound) { anchor in
+                    model.showPresetMenu(channel: channel.id, effect: nil, anchor: anchor)
                 }
-                FieldMenu(
-                    title: "MIDI channel", options: ChannelOptions.midiChannels, selection: channel.midiIn?.channel ?? .all
-                ) { filter in
-                    edit { $0.midiIn?.channel = filter }
-                }
-                .disabled(channel.midiIn == nil)
-                .frame(width: 58)
-            }
-            if let source, !sources.contains(source) {
-                warning("\(source) is not connected")
-            }
-        }
-    }
-
-    private var audioIn: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Legend("Audio in")
-            FieldMenu(
-                title: "Audio in",
-                options: ChannelOptions.inputs(deviceInputs: deviceInputs, allowsOff: channel.kind == .instrument, current: channel.audioIn),
-                selection: channel.audioIn
-            ) { selection in
-                edit { $0.audioIn = selection }
-            }
-        }
-    }
-
-    private var sidechainIn: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Legend("Sidechain in")
-            FieldMenu(
-                title: "Sidechain in",
-                options: ChannelOptions.inputs(deviceInputs: deviceInputs, allowsOff: true, current: channel.sidechainIn),
-                selection: channel.sidechainIn
-            ) { selection in
-                edit { $0.sidechainIn = selection }
-            }
-        }
-    }
-
-    private var plugin: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(channel.slot.displayName)
-                .font(.panelDisplay(29))
-                .panelSpacing(0.04, size: 29)
-                .textCase(.uppercase)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .truncationMode(.tail)
-                .foregroundStyle(Color.legend)
-                .frame(height: 29, alignment: .leading)
-                .help(channel.slot.displayName)
-            if hasPluginControls {
-                presetButton
             } else {
-                switch status {
-                case .pluginMissing:
-                    faultBox("Plugin not installed on this Mac", help: nil) {
-                        Button("Replace plugin") { model.beginReplacePlugin(channel: channel.id) }
-                            .buttonStyle(.wideKey)
-                    }
-                case .loadFailed(let message):
-                    faultBox("Plugin failed to load", help: message)
-                default:
-                    Text("Loading")
-                        .font(.panelText(14))
-                        .foregroundStyle(Color.muted)
-                        .padding(.vertical, 2)
-                }
+                PresetDisplay(text: sound)
             }
         }
     }
 
-    private var presetButton: some View {
-        Button { model.showPresetMenu(channel: channel.id, effect: nil, anchor: presetAnchor) } label: {
-            HStack(spacing: 6) {
-                Text(model.presetLabel(for: channel.slot))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                Spacer(minLength: 0)
-                Text("▾").foregroundStyle(Color.muted)
+    // MARK: - Keys
+
+    private var keys: some View {
+        VStack(spacing: Self.rowGap) {
+            IconKey(symbol: .openPlugin, isOn: isWindowOpen, help: isWindowOpen ? "Close plugin" : "Open plugin") {
+                model.pluginWindows.toggle(channel: channel.id, effect: nil)
             }
-            .font(.panelText(14))
-            .foregroundStyle(Color.ledSoft)
-            .padding(.vertical, 2)
-            .overlay(alignment: .bottom) { Rectangle().fill(Color.line).frame(height: 1) }
-            .contentShape(Rectangle())
-            .opacity(isHosted ? 1 : 0.5)
+            .disabled(!isHosted)
+            IconKey(symbol: .follow, isOn: channel.followsTransport, help: followsTransportHelp) {
+                edit { $0.slot.followsTransport = !$0.followsTransport }
+            }
         }
-        .buttonStyle(.plain)
-        .disabled(!isHosted)
-        .panelMenuAnchor($presetAnchor)
+        .frame(width: 34)
+        .padding(.top, Self.rowsTop + 1)
     }
 
-    private var openButton: some View {
-        Button { model.pluginWindows.toggle(channel: channel.id, effect: nil) } label: {
-            ledKey(isWindowOpen ? "Close plugin" : "Open plugin", isOn: isWindowOpen)
-                .opacity(isHosted ? 1 : 0.5)
-        }
-        .buttonStyle(.plain)
-        .disabled(!isHosted)
-    }
+    // MARK: - Effects
 
-    private var followButton: some View {
-        Button { edit { $0.slot.followsTransport = !$0.followsTransport } } label: {
-            ledKey("Follow Start/Stop", isOn: channel.followsTransport)
-        }
-        .buttonStyle(.plain)
-        .help("On: the plugin starts and stops with the MIDI clock. Off: it only gets the tempo.")
-        .accessibilityValue(channel.followsTransport ? "On" : "Off")
-    }
-
-    /// `.open`.
-    private func ledKey(_ title: String, isOn: Bool) -> some View {
-        HStack(spacing: 7) {
-            LED(tone: isOn ? .on : .off)
-            Text(title)
-                .font(.panelText(12.5))
-                .panelSpacing(0.06, size: 12.5)
-                .textCase(.uppercase)
-        }
-        .foregroundStyle(Color.legend)
-        .frame(maxWidth: .infinity)
-        .padding(4)
-        .overlay(Rectangle().strokeBorder(Color.lineStrong, lineWidth: 1))
-        .contentShape(Rectangle())
-    }
-
-    /// Gets the height the rest of the channel leaves, so in a low window its rows scroll instead of
-    /// running into the meter. The floor is low so that a warning cannot push Audio out off the window,
-    /// and the routing warning stays outside, where scrolling cannot hide it.
     private var effects: some View {
         VStack(alignment: .leading, spacing: 5) {
-            ScrollView(.vertical) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Legend("Effects")
-                    ForEach(Array(channel.effects.enumerated()), id: \.offset) { _, row in
-                        EffectRow(channel: channel, row: row)
-                    }
-                    Button { model.beginAddEffect(channel: channel.id) } label: {
-                        Text("Add effect")
-                            .font(.panelText(12.5))
-                            .foregroundStyle(Color.muted)
-                            .padding(.vertical, 4)
-                            .padding(.horizontal, 7)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .overlay(Rectangle().strokeBorder(Color.line, style: StrokeStyle(lineWidth: 1, dash: [3, 2])))
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
+            Legend("Effects")
+            ForEach(Array(channel.effects.enumerated()), id: \.offset) { _, row in
+                EffectRow(channel: channel, row: row)
             }
-            .scrollBounceBehavior(.basedOnSize)
-            .frame(minHeight: Self.effectsFloor, maxHeight: .infinity, alignment: .top)
-            if case .routingUnavailable(let label) = status {
-                warning("\(label) is not available on this device")
+            Button { model.beginAddEffect(channel: channel.id) } label: {
+                Text("Add effect")
+                    .font(.panelText(12.5))
+                    .foregroundStyle(Color.muted)
+                    .padding(.vertical, 4)
+                    .padding(.horizontal, 7)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .overlay(Rectangle().strokeBorder(Color.line, style: StrokeStyle(lineWidth: 1, dash: [3, 2])))
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
         }
+        .padding(.horizontal, 13)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .overlay(alignment: .leading) { Rectangle().fill(Color.line).frame(width: 1) }
+        .overlay(alignment: .trailing) { Rectangle().fill(Color.line).frame(width: 1) }
     }
 
-    private var audioOut: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Legend("Audio out")
-            FieldMenu(
-                title: "Audio out",
-                options: ChannelOptions.outputs(deviceOutputs: deviceOutputs, current: channel.audioOut),
-                selection: channel.audioOut
-            ) { selection in
-                edit { $0.audioOut = selection }
+    // MARK: - Output
+
+    /// A missing input lights its own display, and the words stay here for an input that has none.
+    private var output: some View {
+        VStack(alignment: .trailing, spacing: Self.rowGap) {
+            RouteDisplay(
+                legend: "Audio out", text: SevenSegment.routeText(channel.audioOut),
+                tone: channel.audioOut.label(prefix: "Out") == missingRoute ? .fault : .lit, alignment: .trailing
+            ) { anchor in
+                model.showAudioOutMenu(channel: channel.id, anchor: anchor)
             }
+            if let missingRoute { warning("\(missingRoute) is not available on this device") }
+            MeterView(activity: activity)
         }
+        .frame(width: 136)
+        .frame(maxHeight: .infinity)
     }
 
     private func warning(_ text: String) -> some View {
@@ -297,21 +308,8 @@ struct ChannelView: View {
                 .foregroundStyle(Color.fault)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.top, 4)
-    }
-
-    private func faultBox(_ text: String, help: String?, @ViewBuilder action: () -> some View = { EmptyView() }) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Text(text)
-                .font(.panelText(13))
-                .foregroundStyle(Color.fault)
-                .fixedSize(horizontal: false, vertical: true)
-            action()
-        }
-        .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(Rectangle().strokeBorder(Color.fault, lineWidth: 1))
-        .help(help ?? "")
+        .padding(.top, 5)
     }
 }
 

@@ -72,7 +72,8 @@ private struct RackPlate: View {
     }
 }
 
-/// `.unit.vent`: fills the free height under the last unit, and is gone when less than 74 points are free.
+/// `.unit.vent`: fills the free height under the last unit, and is gone when less than 74 points are
+/// free. It asks for no height of its own, so a rack with none to spare does not scroll for it.
 struct VentUnit: View {
     private static let minimumHeight: CGFloat = 74
 
@@ -80,7 +81,7 @@ struct VentUnit: View {
 
     var body: some View {
         Color.clear
-            .frame(maxHeight: .infinity)
+            .frame(minHeight: 0, idealHeight: 0, maxHeight: .infinity)
             .onGeometryChange(for: CGFloat.self, of: \.size.height) { height = $0 }
             .overlay {
                 if height >= Self.minimumHeight {

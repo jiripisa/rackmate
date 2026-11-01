@@ -4,6 +4,7 @@
 
 - Pluginarium is now Rackmate. Your configurations, presets and settings come along at the first launch.
 - A new look: the panel is a rack of units with ears, screws and brushed metal, with the logo on the Start screen and a gear for Settings.
+- Each channel is now a rack unit. MIDI channel and audio routing show on seven-segment displays: click a value to change it. Open plugin and Follow Start/Stop are lit icons, with their names in tooltips.
 
 ## 0.1.0 — 2026-11-01
 

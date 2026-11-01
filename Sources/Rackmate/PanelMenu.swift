@@ -50,7 +50,8 @@ final class PanelMenuWindow: NSObject, NSWindowDelegate {
 
     func show(_ menu: PanelMenu) {
         hide()
-        guard let mixer = NSApp.mainWindow.map({ $0.parent ?? $0 }) else {
+        // Not `NSApp.mainWindow`, which is nil while another app is in front.
+        guard let mixer = NSApp.windows.first(where: { $0.title == "Rackmate" }) else {
             close()
             return
         }
@@ -99,10 +100,13 @@ final class PanelMenuWindow: NSObject, NSWindowDelegate {
 }
 
 /// `.menu`: at least 210 pt wide and at most 320, with arrows, Return, Space and Escape working as the
-/// prototype's focused buttons do.
+/// prototype's focused buttons do. A grid takes the left and right arrows as well.
 private struct PanelMenuBox: View {
     private static let padding: CGFloat = 4
     private static let border: CGFloat = 1
+    private static let corner: CGFloat = 3
+    private static let gridGap: CGFloat = 2
+    private static let lineHeight: CGFloat = 18
 
     let menu: PanelMenu
     /// The height of the window it opens in.
@@ -110,7 +114,7 @@ private struct PanelMenuBox: View {
     /// Called with the entry's action, or nil to just close.
     let close: ((() -> Void)?) -> Void
 
-    @State private var highlighted: Int?
+    @State private var highlighted: MenuPosition?
     @FocusState private var isFocused: Bool
 
     var body: some View {
@@ -120,7 +124,7 @@ private struct PanelMenuBox: View {
                     minWidth: 210 - 2 * (Self.padding + Self.border), maxWidth: 320 - 2 * (Self.padding + Self.border)
                 ) {
                     ForEach(Array(menu.entries.enumerated()), id: \.offset) { index, entry in
-                        row(entry, at: index).id(index)
+                        row(entry, at: index)
                     }
                 }
                 .padding(Self.padding)
@@ -129,17 +133,19 @@ private struct PanelMenuBox: View {
             .frame(maxHeight: min(420, maxHeight * 0.8))
             .fixedSize()
             .padding(Self.border)
-            .onChange(of: highlighted) { _, index in
-                if let index { proxy.scrollTo(index) }
+            .onChange(of: highlighted) { _, position in
+                if let position { proxy.scrollTo(position) }
             }
         }
-        .background(Color.panelMenu)
-        .overlay(Rectangle().strokeBorder(Color.lineStrong, lineWidth: Self.border))
+        .background(Color.panelMenu, in: RoundedRectangle(cornerRadius: Self.corner))
+        .overlay(RoundedRectangle(cornerRadius: Self.corner).strokeBorder(Color.lineStrong, lineWidth: Self.border))
         .focusable()
         .focused($isFocused)
         .focusEffectDisabled()
-        .onKeyPress(.downArrow) { move(by: 1) }
-        .onKeyPress(.upArrow) { move(by: -1) }
+        .onKeyPress(.downArrow) { move(.down) }
+        .onKeyPress(.upArrow) { move(.up) }
+        .onKeyPress(.leftArrow) { move(.left) }
+        .onKeyPress(.rightArrow) { move(.right) }
         .onKeyPress(.return) { activate() }
         .onKeyPress(.space) { activate() }
         .onKeyPress(.escape) {
@@ -147,32 +153,20 @@ private struct PanelMenuBox: View {
             return .handled
         }
         .onAppear {
-            highlighted = actions.first
+            highlighted = navigator.first
             isFocused = true
         }
     }
 
-    /// The lines that can be chosen, by their index in the menu.
-    private var actions: [Int] {
-        menu.entries.indices.filter { index in
-            if case .item(_, _, _, true) = menu.entries[index] { return true }
-            return false
-        }
-    }
+    private var navigator: MenuNavigator<() -> Void> { MenuNavigator(entries: menu.entries) }
 
-    private func move(by step: Int) -> KeyPress.Result {
-        let actions = actions
-        guard !actions.isEmpty else { return .handled }
-        if let highlighted, let position = actions.firstIndex(of: highlighted) {
-            self.highlighted = actions[(position + step + actions.count) % actions.count]
-        } else {
-            highlighted = step > 0 ? actions.first : actions.last
-        }
+    private func move(_ direction: MenuMove) -> KeyPress.Result {
+        highlighted = navigator.target(of: direction, from: highlighted)
         return .handled
     }
 
     private func activate() -> KeyPress.Result {
-        if let highlighted, case .item(_, let action, _, true) = menu.entries[highlighted] { close(action) }
+        if let highlighted, let action = navigator.action(at: highlighted) { close(action) }
         return .handled
     }
 
@@ -196,23 +190,47 @@ private struct PanelMenuBox: View {
                 .frame(height: 1)
                 .padding(.vertical, 4)
         case .item(let title, let action, let isCurrent, let isEnabled):
-            Button { close(action) } label: {
-                Text(title)
-                    .font(.panelText(14))
-                    .foregroundStyle(isEnabled ? isCurrent ? Color.ledSoft : Color.legend : Color.muted.opacity(0.6))
-                    .padding(.vertical, 6)
-                    .padding(.horizontal, 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(highlighted == index ? Color.panelRaised : Color.clear)
-                    .contentShape(Rectangle())
+            line(title, action: action, isCurrent: isCurrent, isEnabled: isEnabled, at: MenuPosition(entry: index))
+        case .grid(let columns, let cells):
+            VStack(spacing: Self.gridGap) {
+                ForEach(Array(stride(from: 0, to: cells.count, by: columns)), id: \.self) { start in
+                    HStack(spacing: Self.gridGap) {
+                        ForEach(start..<start + columns, id: \.self) { cell in
+                            if cells.indices.contains(cell) {
+                                line(
+                                    cells[cell].title, action: cells[cell].action, isCurrent: cells[cell].isCurrent,
+                                    at: MenuPosition(entry: index, cell: cell))
+                            } else {
+                                Color.clear.frame(maxWidth: .infinity, maxHeight: 0)
+                            }
+                        }
+                    }
+                }
             }
-            .buttonStyle(.plain)
-            .focusable(false)
-            .disabled(!isEnabled)
-            .accessibilityAddTraits(isCurrent ? .isSelected : [])
-            .onHover { isHovered in
-                if isHovered, isEnabled { highlighted = index }
-            }
+        }
+    }
+
+    private func line(
+        _ title: String, action: @escaping () -> Void, isCurrent: Bool, isEnabled: Bool = true, at position: MenuPosition
+    ) -> some View {
+        Button { close(action) } label: {
+            Text(title)
+                .font(.panelText(14))
+                .foregroundStyle(isEnabled ? isCurrent ? Color.ledSoft : Color.legend : Color.muted.opacity(0.6))
+                .frame(minHeight: Self.lineHeight)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(highlighted == position ? Color.panelRaised : Color.clear)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .focusable(false)
+        .disabled(!isEnabled)
+        .accessibilityAddTraits(isCurrent ? .isSelected : [])
+        .id(position)
+        .onHover { isHovered in
+            if isHovered, isEnabled { highlighted = position }
         }
     }
 }

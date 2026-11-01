@@ -81,6 +81,8 @@ final class AppModel {
     @ObservationIgnored private var installed: [PluginInfo]?
     /// The files of a plugin's presets are read once, because every channel's label asks for them.
     @ObservationIgnored private var presetCache: [PluginID: [Preset]] = [:]
+    /// Every channel asks on every redraw, and the tags of a plugin do not change.
+    @ObservationIgnored private var samplerCache: [PluginID: Bool] = [:]
     @ObservationIgnored private var toastTimer: Task<Void, Never>?
     /// Probes for the Add dialog: one load at a time, and a plugin that failed is not loaded again.
     @ObservationIgnored private lazy var probes = ProbeScheduler<ProbeResult>(delay: .milliseconds(300)) { [weak self] plugin in
@@ -394,6 +396,14 @@ final class AppModel {
         audio?.runner?.plugin(channel: location.channel, effect: location.effect)
     }
 
+    /// Whether a channel of this plugin shows pads instead of keys.
+    func isSampler(_ plugin: PluginID) -> Bool {
+        if let known = samplerCache[plugin] { return known }
+        let found = PluginCatalog.isSampler(plugin)
+        samplerCache[plugin] = found
+        return found
+    }
+
     func presetLabel(for slot: PluginSlot) -> String {
         let isSaved = slot.presetName.map { name in savedPresets(for: slot.plugin).contains { $0.name == name } } ?? false
         return PresetLabel.text(for: slot, isSavedPreset: isSaved)
@@ -479,6 +489,54 @@ final class AppModel {
         showMenu(PluginMenus.sidechain(deviceInputs: deviceInputs, current: current), anchor: anchor) { [weak self] input in
             self?.editChannel(channel) { $0.setSidechain(effectID: effect, to: input) }
         }
+    }
+
+    /// The channel display of a channel that listens to MIDI.
+    func showMIDIChannelMenu(channel id: UUID, anchor: CGRect) {
+        guard let route = channel(id)?.midiIn else { return }
+        showMenu(PluginMenus.midiChannel(current: route.channel), anchor: anchor) { [weak self] filter in
+            self?.editChannel(id) { $0.midiIn?.channel = filter }
+        }
+    }
+
+    /// The device value under the channel display. A new device keeps the channel filter.
+    func showMIDIDeviceMenu(channel id: UUID, anchor: CGRect) {
+        guard let channel = channel(id) else { return }
+        let entries = PluginMenus.midiDevice(sources: audio?.router.sources ?? [], current: channel.midiIn?.sourceName)
+        showMenu(entries, anchor: anchor) { [weak self] name in
+            self?.editChannel(id) { target in
+                target.midiIn = name.map { MIDIRoute(sourceName: $0, channel: target.midiIn?.channel ?? .all) }
+            }
+        }
+    }
+
+    /// A standalone effect has no Off, except while it has no input at all.
+    func showAudioInMenu(channel id: UUID, anchor: CGRect) {
+        guard let channel = channel(id) else { return }
+        let entries = PluginMenus.audioIn(
+            legend: "Audio in", deviceInputs: deviceInputs, allowsOff: channel.kind == .instrument, current: channel.audioIn)
+        showMenu(entries, anchor: anchor) { [weak self] input in
+            self?.editChannel(id) { $0.audioIn = input }
+        }
+    }
+
+    func showSidechainInMenu(channel id: UUID, anchor: CGRect) {
+        guard let channel = channel(id) else { return }
+        let entries = PluginMenus.audioIn(legend: "Sidechain in", deviceInputs: deviceInputs, allowsOff: true, current: channel.sidechainIn)
+        showMenu(entries, anchor: anchor) { [weak self] input in
+            self?.editChannel(id) { $0.sidechainIn = input }
+        }
+    }
+
+    func showAudioOutMenu(channel id: UUID, anchor: CGRect) {
+        guard let channel = channel(id) else { return }
+        showMenu(PluginMenus.audioOut(deviceOutputs: deviceOutputs, current: channel.audioOut), anchor: anchor) { [weak self] output in
+            self?.editChannel(id) { $0.audioOut = output }
+        }
+    }
+
+    private func channel(_ id: UUID) -> Channel? {
+        session?.configuration.channels.first { $0.id == id }
     }
 
     private func showMenu<Action>(_ entries: [MenuEntry<Action>], anchor: CGRect, perform: @escaping (Action) -> Void) {

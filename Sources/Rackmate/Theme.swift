@@ -22,10 +22,8 @@ extension Color {
     static let displayBackground = Color(hex: 0x1B0E05)
     /// `.glyph`, the picture of a plugin.
     static let glyph = Color(hex: 0xD9D5C9)
-    /// A standalone effect's channel.
-    static let panelEffect = Color(hex: 0x2E2C33)
     /// A menu or dialog above the panel.
-    static let panelMenu = Color(hex: 0x222326)
+    static let panelMenu = Color(hex: 0x1C1D20)
     static let walnut = Color(hex: 0x6D4529)
     static let walnutDark = Color(hex: 0x553420)
 
@@ -115,7 +113,7 @@ struct KeyButtonStyle: ButtonStyle {
     private static let fontSize: CGFloat = 12.5
 
     var isPrimary = false
-    /// Takes the width it is offered, as a button does in a grid.
+    /// `.key.replace`: takes the width it is offered, and the height of the preset it stands in for.
     var stretches = false
 
     func makeBody(configuration: Configuration) -> some View {
@@ -139,7 +137,7 @@ struct KeyButtonStyle: ButtonStyle {
                 .lineLimit(1)
                 .fixedSize(horizontal: !stretches, vertical: true)
                 .frame(maxWidth: stretches ? .infinity : nil)
-                .frame(height: 16.25)
+                .frame(height: stretches ? 18 : 16.25)
                 .foregroundStyle(isPrimary ? Color.panelDeep : Color.legend)
                 .padding(.vertical, 7)
                 .padding(.horizontal, 14)

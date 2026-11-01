@@ -12,7 +12,15 @@ struct PluginMenusTests {
             case .hint(let text): "hint: \(text)"
             case .separator: "---"
             case .item(let title, _, _, _): title
+            case .grid(let columns, let cells): "grid \(columns): \(cells.map(\.title).joined(separator: " "))"
             }
+        }
+    }
+
+    private func currentCells<Action>(_ entries: [MenuEntry<Action>]) -> [String] {
+        entries.flatMap { entry -> [String] in
+            guard case .grid(_, let cells) = entry else { return [] }
+            return cells.filter(\.isCurrent).map(\.title)
         }
     }
 
@@ -120,6 +128,60 @@ struct PluginMenusTests {
     @Test func mappingAMenuKeepsItsShape() {
         let menu = PluginMenus.sidechain(deviceInputs: 1, current: nil).map { entry in entry.map { $0 == nil ? "off" : "on" } }
         #expect(menu == [.legend("Sidechain in"), .item("Off", action: "off", isCurrent: true), .item("In 1", action: "on")])
+    }
+
+    // MARK: - Channel displays
+
+    @Test func theChannelMenuHoldsAllAboveAGridOfFour() {
+        #expect(titles(PluginMenus.midiChannel(current: .all)) == [
+            "legend: MIDI channel", "All", "grid 4: 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16",
+        ])
+    }
+
+    @Test func theChannelMenuMarksTheCurrentChannel() {
+        #expect(currentCells(PluginMenus.midiChannel(current: .channel(7))) == ["7"])
+        #expect(currentCells(PluginMenus.midiChannel(current: .all)).isEmpty)
+        #expect(PluginMenus.midiChannel(current: .all)[1] == .item("All", action: .all, isCurrent: true))
+    }
+
+    @Test func theDeviceMenuPutsNoMIDIAboveTheSources() {
+        #expect(titles(PluginMenus.midiDevice(sources: ["Hapax", "Berlinan"], current: "Hapax")) == [
+            "legend: MIDI device", "No MIDI", "---", "Hapax", "Berlinan",
+        ])
+    }
+
+    @Test func theDeviceMenuKeepsASourceThatIsGone() {
+        let entries = PluginMenus.midiDevice(sources: ["Hapax"], current: "Launchpad")
+        #expect(titles(entries).last == "Launchpad (not connected)")
+        #expect(entries.last == .item("Launchpad (not connected)", action: "Launchpad", isCurrent: true))
+    }
+
+    @Test func theDeviceMenuWithoutSourcesHasNoLine() {
+        #expect(titles(PluginMenus.midiDevice(sources: [], current: nil)) == ["legend: MIDI device", "No MIDI"])
+    }
+
+    @Test func anInputMenuPutsOffAboveTwoColumnsWithMonoFirst() {
+        let entries = PluginMenus.audioIn(legend: "Audio in", deviceInputs: 4, allowsOff: true, current: nil)
+        #expect(titles(entries) == ["legend: Audio in", "Off", "grid 2: In 1 In 2 In 3 In 4 In 1–2 In 3–4"])
+        #expect(entries[1] == .item("Off", action: nil, isCurrent: true))
+    }
+
+    @Test func aStandaloneEffectsInputHasNoOff() {
+        let entries = PluginMenus.audioIn(legend: "Audio in", deviceInputs: 2, allowsOff: false, current: .stereo(left: 0, right: 1))
+        #expect(titles(entries) == ["legend: Audio in", "grid 2: In 1 In 2 In 1–2"])
+        #expect(currentCells(entries) == ["In 1–2"])
+    }
+
+    @Test func anInputMenuKeepsARouteTheDeviceLacks() {
+        let entries = PluginMenus.audioIn(legend: "Sidechain in", deviceInputs: 2, allowsOff: true, current: .mono(5))
+        #expect(titles(entries) == ["legend: Sidechain in", "Off", "grid 2: In 1 In 2 In 1–2 In 6"])
+        #expect(currentCells(entries) == ["In 6"])
+    }
+
+    @Test func anOutputMenuIsTwoColumnsWithPairsFirst() {
+        let entries = PluginMenus.audioOut(deviceOutputs: 4, current: .mono(2))
+        #expect(titles(entries) == ["legend: Audio out", "grid 2: Out 1–2 Out 3–4 Out 1 Out 2 Out 3 Out 4"])
+        #expect(currentCells(entries) == ["Out 3"])
     }
 }
 
