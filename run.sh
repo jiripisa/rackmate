@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run script for Pluginarium (development_workflow.md §3)
+# Run script for Rackmate (development_workflow.md §3)
 # Usage: ./run.sh [debug|release]
 #
 #   debug   — build debug + run in terminal (log output visible) (default)
@@ -10,7 +10,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-APP_NAME="Pluginarium"
+APP_NAME="Rackmate"
 MODE="${1:-debug}"
 
 if [ "$MODE" == "debug" ]; then

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Pluginarium is now Rackmate. Your configurations, presets and settings come along at the first launch.
+
 ## 0.1.0 — 2026-11-01
 
 - First version.

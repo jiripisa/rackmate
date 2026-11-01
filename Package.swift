@@ -2,17 +2,17 @@
 import PackageDescription
 
 let package = Package(
-    name: "Pluginarium",
+    name: "Rackmate",
     platforms: [
         .macOS(.v15)
     ],
     products: [
         // The macOS app (bundle assembled by build.sh — see development_workflow.md §2).
-        .executable(name: "Pluginarium", targets: ["Pluginarium"]),
+        .executable(name: "Rackmate", targets: ["Rackmate"]),
         // App logic without UI — what `swift test` covers.
-        .library(name: "PluginariumCore", targets: ["PluginariumCore"]),
+        .library(name: "RackmateCore", targets: ["RackmateCore"]),
         // Command-line probe for the audio layer.
-        .executable(name: "pluginarium-probe", targets: ["pluginarium-probe"]),
+        .executable(name: "rackmate-probe", targets: ["rackmate-probe"]),
     ],
     dependencies: [
         // Auto-update: the standard updater for apps outside the App Store;
@@ -21,8 +21,8 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "PluginariumCore",
-            path: "Sources/PluginariumCore"
+            name: "RackmateCore",
+            path: "Sources/RackmateCore"
         ),
         // Real-time render core in C.
         .target(
@@ -36,47 +36,47 @@ let package = Package(
         ),
         // Audio Unit hosting and audio engine.
         .target(
-            name: "PluginariumAudio",
-            dependencies: ["PluginariumCore", "CRenderCore"],
-            path: "Sources/PluginariumAudio"
+            name: "RackmateAudio",
+            dependencies: ["RackmateCore", "CRenderCore"],
+            path: "Sources/RackmateAudio"
         ),
         // Test Audio Units for tests, and the safe ones for the debug app. Empty in a release.
         .target(
-            name: "PluginariumTestUnits",
-            path: "Sources/PluginariumTestUnits",
+            name: "RackmateTestUnits",
+            path: "Sources/RackmateTestUnits",
             linkerSettings: [
                 .linkedFramework("AudioToolbox"),
                 .linkedFramework("AVFoundation"),
             ]
         ),
         .executableTarget(
-            name: "pluginarium-probe",
-            dependencies: ["PluginariumAudio", "PluginariumTestUnits", "CRenderCore"],
-            path: "Sources/pluginarium-probe"
+            name: "rackmate-probe",
+            dependencies: ["RackmateAudio", "RackmateTestUnits", "CRenderCore"],
+            path: "Sources/rackmate-probe"
         ),
         .executableTarget(
-            name: "Pluginarium",
+            name: "Rackmate",
             dependencies: [
-                "PluginariumCore",
-                "PluginariumAudio",
-                "PluginariumTestUnits",
+                "RackmateCore",
+                "RackmateAudio",
+                "RackmateTestUnits",
                 .product(name: "Sparkle", package: "Sparkle"),
             ],
-            path: "Sources/Pluginarium",
+            path: "Sources/Rackmate",
             linkerSettings: [
                 // Embedded frameworks ship in Contents/Frameworks (build.sh).
                 .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"]),
             ]
         ),
         .testTarget(
-            name: "PluginariumCoreTests",
-            dependencies: ["PluginariumCore"],
-            path: "Tests/PluginariumCoreTests"
+            name: "RackmateCoreTests",
+            dependencies: ["RackmateCore"],
+            path: "Tests/RackmateCoreTests"
         ),
         .testTarget(
-            name: "PluginariumAudioTests",
-            dependencies: ["PluginariumAudio", "PluginariumTestUnits", "CRenderCore", "PluginariumCore"],
-            path: "Tests/PluginariumAudioTests"
+            name: "RackmateAudioTests",
+            dependencies: ["RackmateAudio", "RackmateTestUnits", "CRenderCore", "RackmateCore"],
+            path: "Tests/RackmateAudioTests"
         ),
     ]
 )

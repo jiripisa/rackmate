@@ -1,9 +1,9 @@
 ---
 name: release
-description: Use when the user wants to release, publish or ship a new version of Pluginarium ("udělej release", "vydej novou verzi", "make a release"), or to build the signed and notarized DMG for distribution.
+description: Use when the user wants to release, publish or ship a new version of Rackmate ("udělej release", "vydej novou verzi", "make a release"), or to build the signed and notarized DMG for distribution.
 ---
 
-# Releasing Pluginarium
+# Releasing Rackmate
 
 A release is: version bump → tests → signed + notarized DMG + appcast →
 merge + tag → GitHub Release → website → live checks. Every step
@@ -28,7 +28,7 @@ the user has already said yes to exactly that in the conversation.
 4. Bump `CFBundleShortVersionString` **and** `CFBundleVersion` in
    `Resources/Info.plist`.
 5. Replace the old version in the website: `grep -rn "<old version>" docs/*.html docs/cs/*.html`
-   (download links `releases/download/v…/Pluginarium-….dmg` and version texts).
+   (download links `releases/download/v…/Rackmate-….dmg` and version texts).
 
 Check: `swift test` green (redirect the output to a file, read the summary line).
 
@@ -39,7 +39,7 @@ background and wait for it to finish.
 
 Check, all of them:
 - the log shows `status: Accepted` twice and ends with `Done!`;
-- `spctl -a -vv build/release/Pluginarium.app` says `source=Notarized Developer ID`;
+- `spctl -a -vv build/release/Rackmate.app` says `source=Notarized Developer ID`;
 - `git diff docs/appcast.xml` shows the new version, the new download URL
   and a new `sparkle:edSignature`.
 
@@ -49,10 +49,10 @@ tell them.
 
 ## 3. Screenshot (when the UI changed)
 
-Open `build/release/Pluginarium.app`, capture only its window
+Open `build/release/Rackmate.app`, capture only its window
 (`screencapture -x -o -l <window id>`; the window id from
 `CGWindowListCopyWindowInfo`), look at the image, then copy it to
-`docs/assets/pluginarium-window.png`. Never capture the whole screen or other
+`docs/assets/rackmate-window.png`. Never capture the whole screen or other
 apps' windows. Quit the app afterwards.
 
 ## 4. Commit, merge, tag
@@ -65,26 +65,26 @@ apps' windows. Quit the app afterwards.
 
 ## 5. Publish (order matters)
 
-0. `gh repo view jiripisa/pluginarium --json visibility --jq .visibility`. If it says
+0. `gh repo view jiripisa/rackmate --json visibility --jq .visibility`. If it says
    `PRIVATE` (the project was kept private until its first release), and the
    user agreed in the bold question:
-   `gh repo edit jiripisa/pluginarium --visibility public --accept-visibility-change-consequences`,
+   `gh repo edit jiripisa/rackmate --visibility public --accept-visibility-change-consequences`,
    then turn on Pages:
-   `gh api -X POST repos/jiripisa/pluginarium/pages -f "source[branch]=main" -f "source[path]=/docs"`.
+   `gh api -X POST repos/jiripisa/rackmate/pages -f "source[branch]=main" -f "source[path]=/docs"`.
 1. `git push origin vX.Y.Z`
-2. Copy `build/Pluginarium.dmg` to a scratch folder as `Pluginarium-X.Y.Z.dmg` and run
-   `gh release create vX.Y.Z <that file> --title "Pluginarium X.Y.Z" --notes-file <CHANGELOG section>`.
-3. Check: `curl -sIL -o /dev/null -w "%{http_code}" https://github.com/jiripisa/pluginarium/releases/download/vX.Y.Z/Pluginarium-X.Y.Z.dmg` → `200`.
+2. Copy `build/Rackmate.dmg` to a scratch folder as `Rackmate-X.Y.Z.dmg` and run
+   `gh release create vX.Y.Z <that file> --title "Rackmate X.Y.Z" --notes-file <CHANGELOG section>`.
+3. Check: `curl -sIL -o /dev/null -w "%{http_code}" https://github.com/jiripisa/rackmate/releases/download/vX.Y.Z/Rackmate-X.Y.Z.dmg` → `200`.
 4. Only now `git push origin main` (it carries the appcast; the DMG must
    already exist).
 
 ## 6. Live checks
 
 1. Wait for the Pages deploy: `gh run list --limit 1`, then `gh run watch <id> --exit-status`.
-2. `curl -s "https://jiripisa.github.io/pluginarium/?x=$RANDOM" | grep -o "X.Y.Z"` shows the new version;
-   the same for `https://jiripisa.github.io/pluginarium/cs/`.
+2. `curl -s "https://jiripisa.github.io/rackmate/?x=$RANDOM" | grep -o "X.Y.Z"` shows the new version;
+   the same for `https://jiripisa.github.io/rackmate/cs/`.
 3. Download the DMG from the release URL and the live appcast
-   (`https://jiripisa.github.io/pluginarium/appcast.xml`), then
+   (`https://jiripisa.github.io/rackmate/appcast.xml`), then
    `.build/artifacts/sparkle/Sparkle/bin/sign_update --verify <dmg> <edSignature from the live appcast>`
    must print nothing and exit 0 — the feed's signature matches the published bytes.
 

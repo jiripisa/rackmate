@@ -1,4 +1,4 @@
-# Pluginarium — Development Workflow, Build & Distribution
+# Rackmate — Development Workflow, Build & Distribution
 
 ## 1. Toolchain & Project Layout
 
@@ -6,11 +6,11 @@
   Package Manager builds the code, `build.sh` assembles the `.app` bundle.
 
 ```
-pluginarium/
+rackmate/
 ├── Package.swift
-├── Sources/Pluginarium/          # SwiftUI app (thin layer)
-├── Sources/PluginariumCore/      # logic without UI, tested
-├── Tests/PluginariumCoreTests/   # Swift Testing
+├── Sources/Rackmate/          # SwiftUI app (thin layer)
+├── Sources/RackmateCore/      # logic without UI, tested
+├── Tests/RackmateCoreTests/   # Swift Testing
 ├── Resources/               # Info.plist, entitlements, AppIcon.png (1024 px)
 ├── build.sh                 # debug | release | dist | clean
 └── run.sh                   # debug (logs in terminal) | release (open .app)
@@ -20,8 +20,8 @@ pluginarium/
 
 | Command | Result |
 |---|---|
-| `./build.sh` / `./build.sh debug` | `swift build` → `build/debug/Pluginarium.app` (ad-hoc signed) |
-| `./build.sh release` | same with `-c release` → `build/release/Pluginarium.app` |
+| `./build.sh` / `./build.sh debug` | `swift build` → `build/debug/Rackmate.app` (ad-hoc signed) |
+| `./build.sh release` | same with `-c release` → `build/release/Rackmate.app` |
 | `./build.sh dist` | release build → **Developer ID signing (hardened runtime)** → notarized + stapled app → **DMG** → notarized + stapled DMG |
 | `./build.sh clean` | removes `build/` and `.build/` |
 
@@ -38,12 +38,12 @@ copied in `build.sh` explicitly.
 1. Sign Sparkle's parts inside-out, then the app with the first "Developer ID
    Application" identity in the Keychain, hardened runtime, timestamp.
 2. Notarize the zipped app (`notarytool --keychain-profile notary --wait`), staple it.
-3. Build `build/Pluginarium.dmg` (app + Applications symlink), sign, notarize, staple.
+3. Build `build/Rackmate.dmg` (app + Applications symlink), sign, notarize, staple.
 4. `scripts/make_appcast.py` signs the stapled DMG with Sparkle's `sign_update`
    (EdDSA private key from the login Keychain) and writes `docs/appcast.xml`:
    version, release notes from the CHANGELOG section, the GitHub Release
    download URL, length and signature. Create the GitHub Release (DMG uploaded
-   as `Pluginarium-<version>.dmg`) **before** pushing the appcast, so the feed
+   as `Rackmate-<version>.dmg`) **before** pushing the appcast, so the feed
    never points at a missing file.
 
 A notarization `HTTP status code: 403. A required agreement is missing or has
@@ -69,7 +69,7 @@ developer.apple.com/account.
 The app ships **unsandboxed** (`com.apple.security.app-sandbox = false`),
 which is fine for Developer ID / DMG distribution; Gatekeeper needs the
 hardened runtime and notarization. Add entitlements to
-`Resources/Pluginarium.entitlements` only when a feature needs them.
+`Resources/Rackmate.entitlements` only when a feature needs them.
 
 ## 3. Run (`run.sh`)
 
@@ -80,7 +80,7 @@ hardened runtime and notarization. Add entitlements to
 
 ## 4. Development Methodology
 
-- Logic goes into `PluginariumCore`, test first (`swift test`); the UI is checked
+- Logic goes into `RackmateCore`, test first (`swift test`); the UI is checked
   by running the app.
 - Conventional Commits with a scope: `feat(core): …`, `fix(ui): …`,
   `docs(manual): …`, `chore(release): v1.2.0 — …`.

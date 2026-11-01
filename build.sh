@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build script for Pluginarium (development_workflow.md §2)
+# Build script for Rackmate (development_workflow.md §2)
 # Usage: ./build.sh [debug|release|dist|clean]
 #
 #   debug   — debug build, no optimization (default)
@@ -12,7 +12,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-APP_NAME="Pluginarium"
+APP_NAME="Rackmate"
 BUILD_DIR="$SCRIPT_DIR/build"
 SPM_BUILD_DIR="$SCRIPT_DIR/.build"
 ICON_SOURCE="Resources/AppIcon.png"
@@ -158,7 +158,7 @@ rm -rf "$DMG_STAGING" "$DMG_PATH"
 mkdir -p "$DMG_STAGING"
 cp -R "$APP_BUNDLE" "$DMG_STAGING/"
 ln -s /Applications "$DMG_STAGING/Applications"
-hdiutil create -volname "Pluginarium" -srcfolder "$DMG_STAGING" \
+hdiutil create -volname "Rackmate" -srcfolder "$DMG_STAGING" \
     -ov -format UDZO "$DMG_PATH"
 rm -rf "$DMG_STAGING"
 
@@ -178,7 +178,7 @@ xcrun stapler staple "$DMG_PATH"
 # publishes as $APP_NAME-<version>.dmg (same bytes, so length + signature hold).
 VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Resources/Info.plist)
 python3 scripts/make_appcast.py "$DMG_PATH" "$VERSION" \
-    "https://github.com/jiripisa/pluginarium/releases/download/v$VERSION/$APP_NAME-$VERSION.dmg" \
+    "https://github.com/jiripisa/rackmate/releases/download/v$VERSION/$APP_NAME-$VERSION.dmg" \
     docs/appcast.xml
 
 echo ""

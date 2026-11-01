@@ -1,4 +1,4 @@
-# Pluginarium — project notes for Claude
+# Rackmate — project notes for Claude
 
 Your plugins as instruments in the studio.
 
@@ -6,8 +6,8 @@ Your plugins as instruments in the studio.
 
 - Native macOS app, SwiftUI, macOS 15+. Swift Package Manager plus shell
   scripts; there is no Xcode project, so never add one.
-- `Sources/PluginariumCore` holds logic without UI (no SwiftUI/AppKit) and is
-  covered by `swift test` (Swift Testing). `Sources/Pluginarium` is the SwiftUI
+- `Sources/RackmateCore` holds logic without UI (no SwiftUI/AppKit) and is
+  covered by `swift test` (Swift Testing). `Sources/Rackmate` is the SwiftUI
   app and stays a thin layer over the core. New logic goes into the core,
   test first.
 - Build and run: `./run.sh` (debug, logs in the terminal), `./run.sh release`,
@@ -44,7 +44,7 @@ Your plugins as instruments in the studio.
 
 ## Website (`docs/`, GitHub Pages)
 
-- Served from `main` / `docs` at https://jiripisa.github.io/pluginarium/. The download links and
+- Served from `main` / `docs` at https://jiripisa.github.io/rackmate/. The download links and
   version strings on the pages are bumped with every release.
 - `docs/manual.html` describes every control of the app. A user-visible
   change is not done until the manual says how to use it; screenshots live
