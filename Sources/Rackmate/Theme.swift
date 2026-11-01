@@ -54,23 +54,29 @@ extension View {
 }
 
 /// `:focus-visible`: amber instead of the system's blue ring, which the window turns off.
+///
+/// It reads the focus of the control it is attached to, so it goes on the `Button` itself. The
+/// `isFocused` environment value reaches a label only under the plain button style.
 private struct FocusOutline: ViewModifier {
     let outset: CGFloat
 
-    @Environment(\.isFocused) private var isFocused
+    @FocusState private var isFocused: Bool
 
     func body(content: Content) -> some View {
-        content.overlay {
-            if isFocused {
-                Rectangle().strokeBorder(Color.led, lineWidth: 2).padding(-outset)
+        content
+            .focused($isFocused)
+            .overlay {
+                if isFocused {
+                    Rectangle().strokeBorder(Color.led, lineWidth: 2).padding(-outset).allowsHitTesting(false)
+                }
             }
-        }
     }
 }
 
 extension View {
-    /// For the label of a control that can take keyboard focus. `outset` is the prototype's 2 pt
-    /// gap and its 2 pt outline; a row in a scrolling list has no room for them.
+    /// For a control that can take keyboard focus; attach it to the `Button`, after its style.
+    /// `outset` is the prototype's 2 pt gap and its 2 pt outline; a row in a scrolling list has no
+    /// room for them.
     func panelFocusOutline(outset: CGFloat = 4) -> some View {
         modifier(FocusOutline(outset: outset))
     }
@@ -144,7 +150,6 @@ struct KeyButtonStyle: ButtonStyle {
                 .background { face }
                 .contentShape(Rectangle())
                 .opacity(isPrimary && !isEnabled ? 0.4 : isPressed ? 0.8 : 1)
-                .panelFocusOutline()
                 .onHover { isHovered = $0 }
         }
 

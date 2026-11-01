@@ -277,9 +277,11 @@ struct AddSheet: View {
             Spacer(minLength: 0)
             Button("Cancel") { model.cancel() }
                 .buttonStyle(.key)
+                .panelFocusOutline()
                 .keyboardShortcut(.cancelAction)
             Button(model.confirmLabel) { model.accept() }
                 .buttonStyle(KeyButtonStyle.primary)
+                .panelFocusOutline()
                 .keyboardShortcut(.defaultAction)
                 .disabled(model.selected == nil)
         }

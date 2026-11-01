@@ -71,6 +71,7 @@ private struct AddRow: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .panelFocusOutline()
             .onHover { isHovered = $0 }
             .padding(.vertical, 12)
             .padding(.horizontal, 34)
@@ -120,6 +121,7 @@ private struct TopBar: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .panelFocusOutline(outset: 2)
         .fixedSize()
         .panelMenuAnchor($anchor)
     }
@@ -128,12 +130,12 @@ private struct TopBar: View {
         if let session = model.session {
             if session.isDirty {
                 Text("Unsaved changes").font(.panelText(13)).foregroundStyle(Color.muted)
-                Button("Save") { model.saveCurrent() }.buttonStyle(.key)
+                Button("Save") { model.saveCurrent() }.buttonStyle(.key).panelFocusOutline()
             } else if session.isSaved {
                 Text("Saved").font(.panelText(13)).foregroundStyle(Color.muted)
                 // An open plugin window may hold a change the configuration has not heard of yet.
                 if model.hasOpenPluginWindows {
-                    Button("Save") { model.saveIfChanged() }.buttonStyle(.key)
+                    Button("Save") { model.saveIfChanged() }.buttonStyle(.key).panelFocusOutline()
                 }
             }
         }

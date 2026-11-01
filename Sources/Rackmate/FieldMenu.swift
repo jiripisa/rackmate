@@ -72,7 +72,6 @@ private struct DisplayButtonStyle: ButtonStyle {
             label
                 .background { DisplayWell(glow: isEnabled ? glow : .quiet, border: border) }
                 .contentShape(Rectangle())
-                .panelFocusOutline()
                 .onHover { isHovered = $0 }
         }
 
@@ -113,6 +112,7 @@ struct RouteDisplay: View {
                     .frame(width: DisplaySize.width, height: Self.height, alignment: .trailing)
             }
             .buttonStyle(DisplayButtonStyle(isFault: tone == .fault))
+            .panelFocusOutline()
             .panelMenuAnchor($anchor)
             .help(legend)
             .accessibilityLabel("\(legend): \(text.trimmingCharacters(in: .whitespaces))")
@@ -151,6 +151,7 @@ struct ChannelDisplay: View {
             .frame(width: DisplaySize.width, height: Self.height)
         }
         .buttonStyle(DisplayButtonStyle())
+        .panelFocusOutline()
         .panelMenuAnchor($anchor)
         .help("MIDI channel")
         .accessibilityLabel("MIDI channel: \(spokenValue)")
@@ -179,6 +180,7 @@ struct DeviceValue: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .panelFocusOutline(outset: 2)
         .onHover { isHovered = $0 }
         .panelMenuAnchor($anchor)
         .help("MIDI device")
@@ -214,6 +216,7 @@ struct PresetDisplay: View {
                 .foregroundStyle(Color.led)
             }
             .buttonStyle(DisplayButtonStyle(glow: .preset))
+            .panelFocusOutline()
             .panelMenuAnchor($anchor)
         } else {
             row { EmptyView() }

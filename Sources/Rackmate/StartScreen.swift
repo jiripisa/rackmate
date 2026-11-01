@@ -68,8 +68,10 @@ struct StartScreen: View {
         HStack(spacing: 10) {
             Button("New rack") { model.newConfiguration() }
                 .buttonStyle(KeyButtonStyle.primary)
+                .panelFocusOutline()
             Button("Settings") { model.showSettings() }
                 .buttonStyle(.key)
+                .panelFocusOutline()
         }
     }
 }
@@ -112,9 +114,9 @@ private struct ConfigurationRow: View {
             ConfigurationRowText(name: configuration.name, detail: configuration.summary)
                 .background(isHovered ? Color.rowHover : Color.clear)
                 .contentShape(Rectangle())
-                .panelFocusOutline(outset: 0)
         }
         .buttonStyle(.plain)
+        .panelFocusOutline(outset: 0)
         .onHover { isHovered = $0 }
     }
 }

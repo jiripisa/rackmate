@@ -297,6 +297,37 @@ struct RunnerTests {
         }
     }
 
+    @Test func aFailedEffectStaysFailedWhileItsRetryRuns() async throws {
+        try await withRunner { runner, _ in
+            let bad = insert(brokenID)
+            let channel = instrumentChannel(effects: [[bad]])
+            await runner.apply(configuration(channel))
+            let reason = try #require(runner.failure(effect: bad.id))
+
+            let gate = gated(runner)
+            let retry = Task { await runner.apply(configuration(channel)) }
+            await gate.waitUntilRequested(1)
+            #expect(runner.failure(effect: bad.id) == reason)
+            await gate.open(brokenID)
+            await retry.value
+            #expect(runner.failure(effect: bad.id) == reason)
+        }
+    }
+
+    @Test func aReplacedEffectDoesNotKeepTheOldFailure() async throws {
+        try await withRunner { runner, _ in
+            let bad = insert(brokenID)
+            let channel = instrumentChannel(effects: [[bad]])
+            await runner.apply(configuration(channel))
+            #expect(runner.failure(effect: bad.id) != nil)
+
+            var replaced = bad
+            replaced.slot = insert().slot
+            await runner.apply(configuration(instrumentChannel(effects: [[replaced]])))
+            #expect(runner.failure(effect: bad.id) == nil)
+        }
+    }
+
     // MARK: - The main thread
 
     @Test func applyCreatesAndConfiguresOnTheMainThreadAndShutDownDisposesThere() async throws {

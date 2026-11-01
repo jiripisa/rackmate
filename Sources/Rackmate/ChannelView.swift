@@ -101,6 +101,7 @@ struct ChannelUnit: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(RemoveButtonStyle())
+            .panelFocusOutline(outset: 2)
             .padding(.leading, -5)
             .help("Remove")
             .accessibilityLabel("Remove \(channel.slot.displayName)")
@@ -227,6 +228,7 @@ struct ChannelUnit: View {
         case .pluginMissing:
             Button("Replace plugin") { model.beginReplacePlugin(channel: channel.id) }
                 .buttonStyle(.wideKey)
+                .panelFocusOutline()
         case .loading where !isHosted:
             PresetDisplay(text: "Loading")
         default:

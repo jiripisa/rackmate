@@ -268,9 +268,9 @@ private struct EffectSlot: View {
         Button { model.pluginWindows.toggle(channel: channel, effect: effect.id) } label: {
             SlotName(look: look)
                 .contentShape(Rectangle())
-                .panelFocusOutline(outset: 0)
         }
         .buttonStyle(SlotControlStyle())
+        .panelFocusOutline(outset: 0)
         .disabled(isFailed)
         .highPriorityGesture(dragging, including: isFailed ? .none : .all)
         .pointerStyle(isFailed ? .default : .grabIdle)
@@ -316,9 +316,9 @@ private struct EffectSwitch: View {
                 .frame(width: 22, height: 22)
                 .background { Circle().fill(isHovered && !isFailed ? Color.slotSwitchHover : .clear) }
                 .contentShape(Circle())
-                .panelFocusOutline(outset: 0)
         }
         .buttonStyle(SlotControlStyle())
+        .panelFocusOutline(outset: 0)
         .disabled(isFailed)
         .onHover { isHovered = $0 }
         .help(isFailed ? "Failed to load" : isOn ? "Turn effect off" : "Turn effect on")
@@ -342,9 +342,9 @@ private struct EffectMenuButton: View {
                 .foregroundStyle(isHovered ? Color.legend : Color.muted)
                 .frame(width: 18, height: 26)
                 .contentShape(Rectangle())
-                .panelFocusOutline(outset: 0)
         }
         .buttonStyle(SlotControlStyle())
+        .panelFocusOutline(outset: 0)
         .onHover { isHovered = $0 }
         .help("Menu")
         .accessibilityLabel("\(name) menu")
@@ -358,19 +358,23 @@ struct AddEffectButton: View {
     /// So a chain that scrolls can keep the wider button in view.
     let didUnfold: () -> Void
 
+    @FocusState private var isFocused: Bool
+
     var body: some View {
         Button("Add effect", action: action)
-            .buttonStyle(AddEffectStyle(didUnfold: didUnfold))
+            .buttonStyle(AddEffectStyle(isFocused: isFocused, didUnfold: didUnfold))
+            .focused($isFocused)
             // Its title reaches VoiceOver only while it can be seen.
             .accessibilityLabel("Add effect")
     }
 }
 
 private struct AddEffectStyle: ButtonStyle {
+    let isFocused: Bool
     let didUnfold: () -> Void
 
     func makeBody(configuration: ButtonStyleConfiguration) -> some View {
-        Face(label: configuration.label, didUnfold: didUnfold)
+        Face(label: configuration.label, isFocused: isFocused, didUnfold: didUnfold)
     }
 
     private struct Face<Label: View>: View {
@@ -379,9 +383,9 @@ private struct AddEffectStyle: ButtonStyle {
         private static var fontSize: CGFloat { 12.5 }
 
         let label: Label
+        let isFocused: Bool
         let didUnfold: () -> Void
 
-        @Environment(\.isFocused) private var isFocused
         @Environment(\.accessibilityReduceMotion) private var reduceMotion
         @State private var isHovered = false
         @State private var isUnfolded = false
@@ -409,7 +413,9 @@ private struct AddEffectStyle: ButtonStyle {
             .clipShape(RoundedRectangle(cornerRadius: corner))
             .overlay { RoundedRectangle(cornerRadius: corner).strokeBorder(isUnfolded ? Color.addBorder : Color.line, lineWidth: 1) }
             .contentShape(Rectangle())
-            .panelFocusOutline(outset: 2)
+            .overlay {
+                if isFocused { Rectangle().strokeBorder(Color.led, lineWidth: 2).padding(-2) }
+            }
             .onHover { isHovered = $0 }
             // Moves as one, while the stages beside it make room.
             .geometryGroup()

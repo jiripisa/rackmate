@@ -226,6 +226,7 @@ private struct ChoiceDialogBox: View {
                 ForEach(dialog.choices) { choice in
                     Button(choice.label) { self.choose(choice) }
                         .buttonStyle(choice.isPrimary ? KeyButtonStyle.primary : .key)
+                        .panelFocusOutline()
                         .keyboardShortcut(shortcut(of: choice))
                 }
             }
@@ -293,9 +294,11 @@ private struct NameDialogBox: View {
                 Spacer(minLength: 0)
                 Button("Cancel") { answer(nil) }
                     .buttonStyle(.key)
+                    .panelFocusOutline()
                     .keyboardShortcut(.cancelAction)
                 Button(dialog.confirmLabel, action: confirm)
                     .buttonStyle(KeyButtonStyle.primary)
+                    .panelFocusOutline()
                     .keyboardShortcut(.defaultAction)
                     .disabled(name.isEmpty)
             }

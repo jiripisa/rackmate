@@ -101,11 +101,12 @@ public final class ConfigurationRunner {
     /// Makes `configuration` the one that plays, and returns once its plugins have settled. A call
     /// made during an earlier one replaces it: the newest configuration wins, and both return once
     /// that one has settled, so a discarded plugin holds up neither. A plugin that failed before
-    /// gets another try.
+    /// gets another try, and keeps its failure until that try ends.
     public func apply(_ configuration: Configuration) async {
         guard !isShutDown else { return }
         collectRetired()
 
+        let previous = wanted
         channels = configuration.channels
         wanted = [:]
         followsTransport = [:]
@@ -122,7 +123,9 @@ public final class ConfigurationRunner {
             outgoing.append(plugin)
         }
         for (node, plugin) in hosted { setFollowsTransport(of: plugin, at: node) }
-        failures = [:]
+        // A failure stays until its retry settles, so the effect does not look healthy meanwhile. One
+        // for a plugin that is no longer wanted there would name the wrong plugin.
+        failures = failures.filter { node, _ in wanted[node].map { $0.plugin == previous[node]?.plugin } ?? false }
         for (node, slot) in wanted where hosted[node] == nil {
             startLoad(Load(node: node, plugin: slot.plugin))
         }
@@ -293,6 +296,7 @@ public final class ConfigurationRunner {
             try seams.installCallbacks(plugin, engine)
             setFollowsTransport(of: plugin, at: load.node)
             hosted[load.node] = plugin
+            failures[load.node] = nil
         } catch {
             if isWanted(load) { failures[load.node] = error }
         }

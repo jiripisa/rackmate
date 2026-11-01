@@ -14,6 +14,7 @@ struct IconKey: View {
             VectorArtView(symbol).frame(width: glyphSize.width, height: glyphSize.height)
         }
         .buttonStyle(IconKeyStyle(isOn: isOn, size: size, restingColor: isSmall ? .muted : .keyResting))
+        .panelFocusOutline()
         .help(help)
         .accessibilityLabel(help)
         .accessibilityAddTraits(isOn ? .isSelected : [])
@@ -51,7 +52,6 @@ private struct IconKeyStyle: ButtonStyle {
                 .background { face }
                 .contentShape(Rectangle())
                 .opacity(isPressed ? 0.8 : 1)
-                .panelFocusOutline()
                 .onHover { isHovered = $0 }
                 .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: isHovered)
                 .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: isOn)

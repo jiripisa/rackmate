@@ -46,6 +46,7 @@ struct SettingsScreen: View {
             if let audio = model.audio { AudioFaults(audio: audio) }
             Button("Done") { model.closeSettings() }
                 .buttonStyle(.key)
+                .panelFocusOutline()
         }
     }
 
