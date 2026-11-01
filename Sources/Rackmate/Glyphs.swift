@@ -82,6 +82,20 @@ extension VectorArtView {
     }
 }
 
+/// A plus drawn as two bars, since the "+" of a font sits off centre in its box. An even bar keeps it
+/// on the pixel grid inside an even circle.
+struct PlusGlyph: View {
+    var side: CGFloat = 12
+
+    var body: some View {
+        ZStack {
+            Rectangle().frame(width: side, height: 2)
+            Rectangle().frame(width: 2, height: side)
+        }
+        .frame(width: side, height: side)
+    }
+}
+
 /// `MORE_ICON`: the vertical three dots that open an effect's menu.
 struct MoreGlyph: View {
     private static let art = VectorArt(

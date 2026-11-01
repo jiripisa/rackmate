@@ -86,8 +86,7 @@ private struct AddRow: View {
         RackUnit {
             Button(action: action) {
                 HStack(spacing: 14) {
-                    Text("+")
-                        .font(.panelText(17))
+                    PlusGlyph()
                         .frame(width: 28, height: 28)
                         .overlay { Circle().strokeBorder(color, lineWidth: 1) }
                         .accessibilityHidden(true)

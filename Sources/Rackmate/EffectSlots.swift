@@ -404,9 +404,8 @@ private struct AddEffectStyle: ButtonStyle {
 
         var body: some View {
             HStack(spacing: 0) {
-                Text("+")
-                    .font(.panelText(19))
-                    .frame(width: Self.foldedSize - 2)
+                PlusGlyph()
+                    .frame(width: Self.foldedSize - 2, height: Self.foldedSize - 2)
                     .accessibilityHidden(true)
                 label
                     .font(.panelText(Self.fontSize))
