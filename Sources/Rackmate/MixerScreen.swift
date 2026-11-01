@@ -124,7 +124,7 @@ private struct TopBar: View {
     var body: some View {
         RackTopBar {
             configurationMenu
-            saveState
+            saveState.fixedSize()
             Spacer(minLength: 0)
             if let audio = model.audio {
                 AudioFaults(audio: audio)
@@ -147,6 +147,7 @@ private struct TopBar: View {
         } label: {
             HStack(spacing: 7) {
                 RackTitle(text: name)
+                    .truncationMode(.tail)
                 Text("▾")
                     .font(.panelText(14))
                     .foregroundStyle(Color.muted)
@@ -156,8 +157,10 @@ private struct TopBar: View {
         }
         .buttonStyle(.plain)
         .panelFocusOutline(outset: 2)
-        .fixedSize()
+        .help(name)
         .panelMenuAnchor($anchor)
+        // Takes the free space beside it first, and gives way only to what has to stay whole.
+        .layoutPriority(1)
     }
 
     @ViewBuilder private var saveState: some View {
