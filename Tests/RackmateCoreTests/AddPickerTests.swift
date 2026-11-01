@@ -6,6 +6,10 @@ private func info(_ name: String, vendor: String = "", kind: PluginKind = .instr
     PluginInfo(id: PluginID(type: kind == .effect ? "aufx" : "aumu", subtype: name, manufacturer: "Test"), name: name, vendor: vendor, kind: kind)
 }
 
+private func musicEffect(_ name: String) -> PluginInfo {
+    PluginInfo(id: PluginID(type: "aumf", subtype: "Mfx1", manufacturer: "Test"), name: name, vendor: "Arturia", kind: .instrument)
+}
+
 @Suite("AddPicker")
 struct AddPickerTests {
     let mariana = info("Mariana", vendor: "Roland")
@@ -19,6 +23,42 @@ struct AddPickerTests {
     func filtersKind() {
         let listing = AddPicker.listing(of: catalog, kind: .effect, query: "", recent: [])
         #expect(listing.all.map(\.name) == ["Hall"])
+    }
+
+    @Test("A music effect is offered as an instrument and as an effect")
+    func musicEffectInBothLists() {
+        let plate = musicEffect("Rev PLATE-140")
+        let plugins = catalog + [plate]
+        #expect(AddPicker.listing(of: plugins, kind: .effect, query: "", recent: []).all.map(\.name) == ["Hall", "Rev PLATE-140"])
+        #expect(AddPicker.listing(of: plugins, kind: .instrument, query: "plate", recent: []).all.map(\.name) == ["Rev PLATE-140"])
+    }
+
+    @Test("A recent music effect leads both lists")
+    func recentMusicEffect() {
+        let plate = musicEffect("Rev PLATE-140")
+        let plugins = catalog + [plate]
+        #expect(AddPicker.listing(of: plugins, kind: .effect, query: "", recent: [plate.id]).recent.map(\.name) == ["Rev PLATE-140"])
+        #expect(AddPicker.listing(of: plugins, kind: .instrument, query: "", recent: [plate.id]).recent.map(\.name) == ["Rev PLATE-140"])
+    }
+
+    @Test("A music effect added as a standalone effect becomes an effect channel")
+    func musicEffectAsStandaloneEffect() {
+        let plate = musicEffect("Rev PLATE-140")
+        let caps = PluginCapabilities.derive(auType: "aumf", inputBusNames: ["Input"])
+        let channel = AddPicker.channel(plugin: plate, kind: .effect, preset: .defaultSound, routing: routing, capabilities: caps)
+        #expect(channel.kind == .effect)
+        #expect(channel.audioIn == routing.audioIn)
+        #expect(channel.followsTransport)
+    }
+
+    @Test("A music effect added as an instrument stays an instrument channel")
+    func musicEffectAsInstrument() {
+        let vocoder = musicEffect("Vocoder")
+        let caps = PluginCapabilities.derive(auType: "aumf", inputBusNames: ["Input"])
+        let channel = AddPicker.channel(plugin: vocoder, kind: .instrument, preset: .defaultSound, routing: routing, capabilities: caps)
+        #expect(channel.kind == .instrument)
+        #expect(channel.midiIn == routing.midiIn)
+        #expect(!channel.followsTransport)
     }
 
     @Test("Search matches name and vendor, ignoring case and surrounding spaces")
@@ -85,7 +125,7 @@ struct AddPickerTests {
     @Test("A new instrument takes MIDI and out, and audio in only when the plugin has it")
     func newInstrument() {
         let caps = PluginCapabilities(acceptsMIDI: true, hasAudioIn: false, hasSidechain: false)
-        let channel = AddPicker.channel(plugin: mariana, preset: .defaultSound, routing: routing, capabilities: caps)
+        let channel = AddPicker.channel(plugin: mariana, kind: .instrument, preset: .defaultSound, routing: routing, capabilities: caps)
         #expect(channel.kind == .instrument)
         #expect(channel.slot == PluginSlot(plugin: mariana.id, displayName: "Mariana"))
         #expect(channel.midiIn == routing.midiIn)
@@ -98,7 +138,7 @@ struct AddPickerTests {
     @Test("A new effect with a sidechain keeps audio and sidechain in")
     func newEffect() {
         let caps = PluginCapabilities(acceptsMIDI: false, hasAudioIn: true, hasSidechain: true)
-        let channel = AddPicker.channel(plugin: reverb, preset: .defaultSound, routing: routing, capabilities: caps)
+        let channel = AddPicker.channel(plugin: reverb, kind: .effect, preset: .defaultSound, routing: routing, capabilities: caps)
         #expect(channel.kind == .effect)
         #expect(channel.midiIn == nil)
         #expect(channel.audioIn == routing.audioIn)
@@ -107,10 +147,10 @@ struct AddPickerTests {
 
     @Test("Unknown capabilities use the fields shown meanwhile")
     func newWithUnknownCapabilities() {
-        let instrument = AddPicker.channel(plugin: mariana, preset: .defaultSound, routing: routing, capabilities: nil)
+        let instrument = AddPicker.channel(plugin: mariana, kind: .instrument, preset: .defaultSound, routing: routing, capabilities: nil)
         #expect(instrument.midiIn == routing.midiIn)
         #expect(instrument.audioIn == nil && instrument.sidechainIn == nil)
-        let effect = AddPicker.channel(plugin: reverb, preset: .defaultSound, routing: routing, capabilities: nil)
+        let effect = AddPicker.channel(plugin: reverb, kind: .effect, preset: .defaultSound, routing: routing, capabilities: nil)
         #expect(effect.midiIn == nil)
         #expect(effect.audioIn == routing.audioIn)
         #expect(effect.sidechainIn == nil)

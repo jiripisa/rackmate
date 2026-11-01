@@ -103,7 +103,7 @@ final class AddModel {
     func accept() {
         guard !isDone, let plugin = selectedPlugin else { return }
         isDone = true
-        app.finishAdd(target, plugin: plugin, preset: preset, routing: routing, capabilities: capabilities)
+        app.finishAdd(target, plugin: plugin, kind: kind, preset: preset, routing: routing, capabilities: capabilities)
     }
 
     func cancel() {

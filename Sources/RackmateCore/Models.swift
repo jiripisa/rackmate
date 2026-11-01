@@ -17,7 +17,8 @@ public enum PluginKind: String, Codable, Sendable {
     case instrument
     case effect
 
-    /// `aumu` and `aumf` are instruments, `aufx` is an effect; other types are not hosted.
+    /// `aumu` and `aumf` are instruments, `aufx` is an effect; other types are not hosted. An `aumf` is
+    /// also offered as an effect, see `PluginInfo.isOffered(as:)`.
     public init?(auType: String) {
         switch auType {
         case "aumu", "aumf": self = .instrument
@@ -40,13 +41,14 @@ public struct PluginCapabilities: Codable, Equatable, Sendable {
     }
 
     /// A bus is a sidechain when its name contains "side" (case-insensitive) or when it is
-    /// the second bus of an effect. Any other bus of an `aumu`/`aumf` is main audio input.
+    /// the second bus of an `aufx` or `aumf`, which is where the sidechain goes. Any other bus is main
+    /// audio input.
     public static func derive(auType: String, inputBusNames: [String]) -> PluginCapabilities {
-        let isEffect = auType == "aufx"
+        let secondBusIsSidechain = auType == "aufx" || auType == "aumf"
         var hasAudioIn = false
         var hasSidechain = false
         for (index, name) in inputBusNames.enumerated() {
-            if name.lowercased().contains("side") || (isEffect && index == 1) {
+            if name.lowercased().contains("side") || (secondBusIsSidechain && index == 1) {
                 hasSidechain = true
             } else {
                 hasAudioIn = true
@@ -71,6 +73,12 @@ public struct PluginInfo: Codable, Identifiable, Sendable {
         self.name = name
         self.vendor = vendor
         self.kind = kind
+    }
+
+    /// Whether the Add dialog offers the plugin as `wanted`. A music effect (`aumf`) is both: a vocoder
+    /// played over MIDI is one, and so is a plain reverb that takes MIDI, and the type does not tell them apart.
+    public func isOffered(as wanted: PluginKind) -> Bool {
+        kind == wanted || id.type == "aumf"
     }
 }
 
