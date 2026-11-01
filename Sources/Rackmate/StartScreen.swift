@@ -2,45 +2,50 @@ import AppKit
 import RackmateCore
 import SwiftUI
 
-/// Launching always opens this screen, and the owner picks what to load.
+/// Launching always opens this screen, and the owner picks what to load. One tall unit fills the window.
 struct StartScreen: View {
     private static let powerFontSize: CGFloat = 12.5
-    private static let wordmarkFontSize: CGFloat = 76
+    /// `.plate` padding, 9 % of the width of the whole unit, ears included.
+    private static let sideInset: CGFloat = 0.09
+    private static let logoWidth: CGFloat = 330
+    /// From the app bundle, which `build.sh` copies it into.
+    private static let logo = Bundle.main.url(forResource: "Logo", withExtension: "png").flatMap(NSImage.init(contentsOf:))
 
     let model: AppModel
 
+    @State private var plateWidth: CGFloat = 0
+
     var body: some View {
-        HStack(spacing: 48) {
-            masthead.frame(maxWidth: .infinity, alignment: .leading)
-            VStack(alignment: .leading, spacing: 16) {
-                ConfigurationList(model: model)
-                actions
+        RackUnit(earInset: 18) {
+            HStack(spacing: 48) {
+                masthead.frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 16) {
+                    ConfigurationList(model: model)
+                    actions
+                }
+                .frame(maxWidth: 480)
+                .layoutPriority(1)
             }
-            .frame(maxWidth: 480)
-            .layoutPriority(1)
+            .padding(.horizontal, Self.sideInset * (plateWidth + 2 * RackEar.width))
+            .padding(.vertical, 32)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onGeometryChange(for: CGFloat.self, of: \.size.width) { plateWidth = $0 }
         }
-        .frame(maxWidth: 1040)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 32)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .ignoresSafeArea()
         .onAppear {
             // Macs with keyboard navigation on focus the first row, which nobody asked for.
-            DispatchQueue.main.async { NSApp.keyWindow?.makeFirstResponder(nil) }
+            DispatchQueue.main.async { NSApp.windows.first { $0.title == "Rackmate" }?.makeFirstResponder(nil) }
         }
     }
 
     private var masthead: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Rackmate")
-                .font(.panelDisplay(Self.wordmarkFontSize))
-                .panelSpacing(0.04, size: Self.wordmarkFontSize)
-                .textCase(.uppercase)
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-                .foregroundStyle(Color.legend)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(height: 68.4)
+            if let logo = Self.logo {
+                Image(nsImage: logo)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: Self.logoWidth, alignment: .leading)
+                    .accessibilityLabel("Rackmate")
+            }
             Text("Your plugins as instruments in the studio.")
                 .font(.panelText(15))
                 .foregroundStyle(Color.muted)
@@ -105,7 +110,7 @@ private struct ConfigurationRow: View {
     var body: some View {
         Button(action: open) {
             ConfigurationRowText(name: configuration.name, detail: configuration.summary)
-                .background(isHovered ? Color.panelRaised : Color.clear)
+                .background(isHovered ? Color.rowHover : Color.clear)
                 .contentShape(Rectangle())
                 .panelFocusOutline(outset: 0)
         }
@@ -138,8 +143,13 @@ private struct ConfigurationRowText: View {
         }
         .padding(.vertical, 11)
         .padding(.bottom, 1)
-        .padding(.horizontal, 4)
+        .padding(.horizontal, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(alignment: .bottom) { Rectangle().fill(Color.line).frame(height: 1) }
     }
+}
+
+private extension Color {
+    /// `.config-row:hover`.
+    static let rowHover = Color(hex: 0xFFFFFF, alpha: 0x0D)
 }

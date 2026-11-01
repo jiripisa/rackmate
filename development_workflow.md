@@ -11,7 +11,7 @@ rackmate/
 ├── Sources/Rackmate/          # SwiftUI app (thin layer)
 ├── Sources/RackmateCore/      # logic without UI, tested
 ├── Tests/RackmateCoreTests/   # Swift Testing
-├── Resources/               # Info.plist, entitlements, AppIcon.png (1024 px)
+├── Resources/               # Info.plist, entitlements, AppIcon.png (1024 px), Logo.png
 ├── build.sh                 # debug | release | dist | clean
 └── run.sh                   # debug (logs in terminal) | release (open .app)
 ```
@@ -28,7 +28,8 @@ rackmate/
 ### 2.1 App-bundle assembly (all modes)
 
 Executable → `Contents/MacOS`, `Resources/Info.plist` → `Contents/`,
-`Resources/AppIcon.png` → `AppIcon.icns` (sips + iconutil), Sparkle.framework →
+`Resources/AppIcon.png` → `AppIcon.icns` (sips + iconutil), `Resources/Logo.png`
+→ `Contents/Resources`, Sparkle.framework →
 `Contents/Frameworks` (XPC services removed; the app is unsandboxed), PkgInfo,
 then an ad-hoc signature with the entitlements. New resource files must be
 copied in `build.sh` explicitly.

@@ -37,8 +37,8 @@ struct FieldMenu<Value: Hashable & Sendable>: View {
             .padding(.vertical, 5)
             .padding(.horizontal, 6)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.panelDeep)
-            .overlay(Rectangle().strokeBorder(isHovered && isEnabled ? Color.lineStrong : Color.line, lineWidth: 1))
+            .background(Color.panelDeep, in: RoundedRectangle(cornerRadius: 3))
+            .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(isHovered && isEnabled ? Color.lineStrong : Color.line, lineWidth: 1))
             .contentShape(Rectangle())
             .opacity(isEnabled ? 1 : 0.5)
         }

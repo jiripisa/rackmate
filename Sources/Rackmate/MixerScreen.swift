@@ -9,18 +9,20 @@ struct MixerScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             TopBar(model: model)
-            ScrollView(.horizontal) {
-                HStack(spacing: 0) {
-                    ForEach(Array(channels.enumerated()), id: \.element.id) { index, channel in
-                        ChannelView(channel: channel, index: index)
+            RackUnit {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 0) {
+                        ForEach(Array(channels.enumerated()), id: \.element.id) { index, channel in
+                            ChannelView(channel: channel, index: index)
+                        }
+                        AddColumn { model.beginAddChannel() }
                     }
-                    AddColumn { model.beginAddChannel() }
+                    .frame(maxHeight: .infinity)
                 }
-                .frame(maxHeight: .infinity)
+                .scrollIndicators(.automatic)
             }
-            .scrollIndicators(.automatic)
+            .padding(.vertical, 5)
         }
-        .padding(.horizontal, 14)
         .environment(model)
     }
 
@@ -59,7 +61,7 @@ private struct TopBar: View {
     @State private var anchor = CGRect.zero
 
     var body: some View {
-        HStack(spacing: 12) {
+        RackTopBar {
             configurationMenu
             saveState
             Spacer(minLength: 0)
@@ -68,12 +70,9 @@ private struct TopBar: View {
                 ClockReadout(router: audio.router, source: model.settings.clockSource)
                 CPUReadout(engine: audio.engine)
             }
-            Button("Settings") { model.showSettings() }
-                .buttonStyle(.key)
+            RackDivider()
+            IconKey(symbol: .settings, isOn: false, help: "Settings", size: 30) { model.showSettings() }
         }
-        .padding(.top, 12)
-        .padding(.bottom, 10)
-        .overlay(alignment: .bottom) { Rectangle().fill(Color.lineStrong).frame(height: 1) }
     }
 
     private var name: String {
@@ -85,17 +84,12 @@ private struct TopBar: View {
         Button {
             model.showConfigurationMenu(anchor: anchor)
         } label: {
-            HStack(spacing: 6) {
-                Text(name)
-                    .font(.panelDisplay(27))
-                    .panelSpacing(0.05, size: 27)
-                    .textCase(.uppercase)
-                    .lineLimit(1)
-                    .foregroundStyle(Color.legend)
+            HStack(spacing: 7) {
+                RackTitle(text: name)
                 Text("▾")
-                    .font(.panelText(15))
+                    .font(.panelText(14))
                     .foregroundStyle(Color.muted)
-                    .padding(.top, 3)
+                    .offset(y: -2)
             }
             .contentShape(Rectangle())
         }

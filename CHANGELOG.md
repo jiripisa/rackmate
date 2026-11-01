@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Pluginarium is now Rackmate. Your configurations, presets and settings come along at the first launch.
+- A new look: the panel is a rack of units with ears, screws and brushed metal, with the logo on the Start screen and a gear for Settings.
 
 ## 0.1.0 — 2026-11-01
 

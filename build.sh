@@ -60,6 +60,9 @@ cp "$SPM_BUILD_DIR/$SPM_CONFIG/$APP_NAME" "$APP_BUNDLE/Contents/MacOS/"
 # Copy Info.plist
 cp "Resources/Info.plist" "$APP_BUNDLE/Contents/"
 
+# Copy the logo the Start screen shows
+cp "Resources/Logo.png" "$APP_BUNDLE/Contents/Resources/"
+
 # Embed Sparkle (auto-update). The app is unsandboxed, so the XPC services
 # (only needed by sandboxed apps) are left out.
 SPARKLE_SRC=".build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"

@@ -10,20 +10,23 @@ struct SettingsScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             topBar
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    audioSection
-                    clockSection
-                    instrumentSection
-                    effectSection
+            RackUnit {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        audioSection
+                        clockSection
+                        instrumentSection
+                        effectSection
+                    }
+                    .frame(maxWidth: 760, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 28)
+                    .padding(.top, 8)
+                    .padding(.bottom, 24)
                 }
-                .frame(maxWidth: 760, alignment: .leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 8)
-                .padding(.bottom, 24)
             }
+            .padding(.vertical, 5)
         }
-        .padding(.horizontal, 14)
         // The devices come and go while the screen shows.
         .task {
             while !Task.isCancelled {
@@ -37,20 +40,13 @@ struct SettingsScreen: View {
     private var sources: [String] { model.audio?.router.sources ?? [] }
 
     private var topBar: some View {
-        HStack(spacing: 12) {
-            Text("Settings")
-                .font(.panelDisplay(27))
-                .panelSpacing(0.05, size: 27)
-                .textCase(.uppercase)
-                .foregroundStyle(Color.legend)
+        RackTopBar {
+            RackTitle(text: "Settings")
             Spacer(minLength: 0)
             if let audio = model.audio { AudioFaults(audio: audio) }
             Button("Done") { model.closeSettings() }
                 .buttonStyle(.key)
         }
-        .padding(.top, 12)
-        .padding(.bottom, 10)
-        .overlay(alignment: .bottom) { Rectangle().fill(Color.lineStrong).frame(height: 1) }
     }
 
     // MARK: - Sections

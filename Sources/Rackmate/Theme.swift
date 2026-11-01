@@ -1,19 +1,27 @@
 import SwiftUI
 
-// The synth front panel of `ui-prototype/styles.css`, whose sizes and colors these are.
+// The rack of `ui-prototype/styles.css`, whose sizes and colors these are.
 
 extension Color {
-    static let panel = Color(hex: 0x2A2B2E)
-    static let panelDeep = Color(hex: 0x191A1C)
-    static let panelRaised = Color(hex: 0x333438)
+    static let chassis = Color(hex: 0x131416)
+    static let panel = Color(hex: 0x26272A)
+    static let panelDeep = Color(hex: 0x161719)
+    static let panelRaised = Color(hex: 0x33353A)
     static let legend = Color(hex: 0xECE8DC)
-    static let muted = Color(hex: 0xA9A698)
-    static let line = Color(hex: 0x55554F)
+    static let muted = Color(hex: 0xA3A194)
+    static let line = Color(hex: 0x4A4B47)
     static let lineStrong = Color(hex: 0x8F8C80)
-    static let led = Color(hex: 0xFF8A1F)
+    /// Amber is for displays only.
+    static let led = Color(hex: 0xFF9A3C)
     static let ledSoft = Color(hex: 0xFFB066)
+    /// Green is for lit status.
+    static let on = Color(hex: 0x62E36C)
+    /// Red is for faults.
     static let fault = Color(hex: 0xFF6A52)
-    static let ledOff = Color(hex: 0x4A4A46)
+    static let ledOff = Color(hex: 0x45453F)
+    static let displayBackground = Color(hex: 0x1B0E05)
+    /// `.glyph`, the picture of a plugin.
+    static let glyph = Color(hex: 0xD9D5C9)
     /// A standalone effect's channel.
     static let panelEffect = Color(hex: 0x2E2C33)
     /// A menu or dialog above the panel.
@@ -21,12 +29,14 @@ extension Color {
     static let walnut = Color(hex: 0x6D4529)
     static let walnutDark = Color(hex: 0x553420)
 
-    private init(hex: UInt32) {
+    /// A CSS color: `hex` is `rrggbb` and `alpha` the optional last two digits.
+    init(hex: UInt32, alpha: UInt32 = 0xFF) {
         self.init(
             .sRGB,
             red: Double(hex >> 16 & 0xFF) / 255,
             green: Double(hex >> 8 & 0xFF) / 255,
-            blue: Double(hex & 0xFF) / 255
+            blue: Double(hex & 0xFF) / 255,
+            opacity: Double(alpha) / 255
         )
     }
 }
@@ -68,6 +78,36 @@ extension View {
     }
 }
 
+/// The body of `.key` and `.icon-key`: a raised face with a light top edge.
+struct KeyFace: View {
+    static let cornerRadius: CGFloat = 3
+
+    let top: Color
+    let bottom: Color
+    let border: Color
+    /// A key that is lit or cannot be pressed lies flat.
+    var isRaised = true
+    /// Lit from inside, as a key that is on.
+    var glows = false
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: Self.cornerRadius)
+            .fill(LinearGradient(colors: [top, bottom], startPoint: .top, endPoint: .bottom))
+            .overlay {
+                if glows {
+                    RackArt.keyGlow.resizable(capInsets: EdgeInsets(RackArt.keyGlowCap), resizingMode: .stretch)
+                }
+            }
+            .overlay(alignment: .top) {
+                if isRaised {
+                    Rectangle().fill(Color.edgeLight).frame(height: 1).padding(.top, 1).padding(.horizontal, 1)
+                }
+            }
+            .overlay { RoundedRectangle(cornerRadius: Self.cornerRadius).strokeBorder(border, lineWidth: 1) }
+            .shadow(color: isRaised ? .keyShadow : .clear, radius: 1, y: 1)
+    }
+}
+
 /// `.key`. Use `.key` or `KeyButtonStyle.primary`.
 struct KeyButtonStyle: ButtonStyle {
     static let primary = KeyButtonStyle(isPrimary: true)
@@ -101,18 +141,21 @@ struct KeyButtonStyle: ButtonStyle {
                 .frame(maxWidth: stretches ? .infinity : nil)
                 .frame(height: 16.25)
                 .foregroundStyle(isPrimary ? Color.panelDeep : Color.legend)
-                .padding(.vertical, 5)
-                .padding(.horizontal, 12)
-                .background(isPrimary ? Color.legend : Color.clear)
-                .overlay(Rectangle().strokeBorder(borderColor, lineWidth: 1))
+                .padding(.vertical, 7)
+                .padding(.horizontal, 14)
+                .background { face }
                 .contentShape(Rectangle())
                 .opacity(isPrimary && !isEnabled ? 0.4 : isPressed ? 0.8 : 1)
                 .panelFocusOutline()
                 .onHover { isHovered = $0 }
         }
 
-        private var borderColor: Color {
-            isPrimary || (isHovered && isEnabled) ? .legend : .lineStrong
+        @ViewBuilder private var face: some View {
+            if isPrimary {
+                KeyFace(top: .legend, bottom: .legend, border: .legend, isRaised: false)
+            } else {
+                KeyFace(top: .keyTop, bottom: .keyBottom, border: isHovered && isEnabled ? .legend : .keyBorder)
+            }
         }
     }
 }
@@ -151,23 +194,23 @@ struct LED: View {
     var tone = Tone.on
 
     var body: some View {
-        Circle()
-            .fill(color)
-            .frame(width: 8, height: 8)
-            .shadow(color: tone == .off ? .clear : color, radius: 4)
+        Group {
+            if tone == .off {
+                Circle().fill(Color.ledOff.shadow(.inner(color: .ledRecess, radius: 0.5, y: 1)))
+            } else {
+                Circle().fill(color).shadow(color: color, radius: 3.5)
+            }
+        }
+        .frame(width: 9, height: 9)
     }
 
     private var color: Color {
-        switch tone {
-        case .on: .led
-        case .off: .ledOff
-        case .fault: .fault
-        }
+        tone == .fault ? .fault : .on
     }
 }
 
-/// The panel between its two walnut cheeks. The panel's content stays below the title bar, while
-/// the panel and the cheeks run up to the top of the window.
+/// The rack between its two walnut cheeks. The rack stays below the title bar, while the chassis and
+/// the cheeks run up to the top of the window.
 struct WalnutFrame<Content: View>: View {
     @ViewBuilder let content: Content
 
@@ -177,7 +220,7 @@ struct WalnutFrame<Content: View>: View {
             content.frame(maxWidth: .infinity, maxHeight: .infinity)
             WalnutCheek()
         }
-        .background(Color.panel.ignoresSafeArea())
+        .background(Color.chassis.ignoresSafeArea())
     }
 }
 
@@ -215,4 +258,13 @@ private struct WalnutCheek: View {
         path.closeSubpath()
         return path
     }
+}
+
+private extension Color {
+    static let keyTop = Color(hex: 0x303134)
+    static let keyBottom = Color(hex: 0x212225)
+    static let keyBorder = Color(hex: 0x6F6E67)
+    static let keyShadow = Color(hex: 0x000000, alpha: 0x99)
+    static let edgeLight = Color(hex: 0xFFFFFF, alpha: 0x14)
+    static let ledRecess = Color(hex: 0x000000, alpha: 0x88)
 }

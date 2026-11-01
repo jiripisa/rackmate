@@ -111,7 +111,7 @@ private struct RootView: View {
         .toast(model.toast)
         .onChange(of: model.hidesPluginWindows) { _, hidden in model.pluginWindows.setHidden(hidden) }
         // The window adds the title bar to this, and its minimum is for the whole window.
-        .frame(minWidth: 900, minHeight: 600 - titleBarHeight)
+        .frame(minWidth: 1200, minHeight: 600 - titleBarHeight)
         .onGeometryChange(for: CGFloat.self, of: \.safeAreaInsets.top) { titleBarHeight = $0 }
         .preferredColorScheme(.dark)
     }
