@@ -197,12 +197,18 @@ private struct SlotCard<Controls: View>: View {
 /// `.fx-open`: the small picture, hidden in a narrow slot, and the name.
 private struct SlotName: View {
     private static let fontSize: CGFloat = 17
+    private static let pictureSize: CGFloat = 11
 
     let look: EffectLook
 
     var body: some View {
-        HStack(spacing: 7) {
-            if look.showsPicture { PluginGlyph(kind: .slot) }
+        // On one baseline and as tall as the capitals: DIN Condensed sits high in its line box.
+        HStack(alignment: .firstTextBaseline, spacing: 7) {
+            if look.showsPicture {
+                PluginGlyph(kind: .slot)
+                    .frame(width: Self.pictureSize, height: Self.pictureSize)
+                    .alignmentGuide(.firstTextBaseline) { $0[.bottom] }
+            }
             Text(look.name)
                 .font(.panelDisplay(Self.fontSize))
                 .panelSpacing(0.03, size: Self.fontSize)
@@ -210,6 +216,7 @@ private struct SlotName: View {
                 .truncationMode(.tail)
         }
         .foregroundStyle(look.nameColor)
+        .offset(y: 2)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 }
