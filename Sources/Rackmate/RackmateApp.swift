@@ -30,7 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
            let configuration = model.configurations.first(where: { $0.name == arguments[flag + 1] }) {
             model.load(configuration)
         }
-        // For looking at the Add dialog: --add opens a new configuration, and --recent <subtypes>
+        // For looking at the Add dialog: --add opens a new rack, and --recent <subtypes>
         // puts test units (manufacturer "Plug") first in the list, so nothing third party is selected.
         if let flag = arguments.firstIndex(of: "--recent"), arguments.indices.contains(flag + 1) {
             let subtypes = arguments[flag + 1].split(separator: ",").map(String.init)

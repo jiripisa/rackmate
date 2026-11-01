@@ -169,6 +169,22 @@ private struct ChoiceDialogPresenter: ViewModifier {
     }
 }
 
+extension View {
+    /// `dialog`: `--brushed` metal, a 3 pt corner, the strong outline and `0 20px 60px #000a`.
+    func rackDialogSurface() -> some View {
+        let shape = RoundedRectangle(cornerRadius: 3)
+        return background {
+            ZStack {
+                RackArt.metal(.plain).resizable()
+                RackArt.brushLines.resizable(resizingMode: .tile)
+            }
+            .clipShape(shape)
+        }
+        .overlay(shape.strokeBorder(Color.lineStrong, lineWidth: 1))
+        .shadow(color: .black.opacity(0.667), radius: 30, y: 20)
+    }
+}
+
 /// `dialog`: 420 pt wide on the panel, with a strong outline.
 private struct DialogBox<Content: View>: View {
     private static var titleSize: CGFloat { 27 }
@@ -189,9 +205,7 @@ private struct DialogBox<Content: View>: View {
         }
         .padding(18)
         .frame(width: 420)
-        .background(Color.panel)
-        .overlay(Rectangle().strokeBorder(Color.lineStrong, lineWidth: 1))
-        .shadow(color: .black.opacity(0.65), radius: 30, y: 20)
+        .rackDialogSurface()
         .accessibilityAddTraits(.isModal)
     }
 }
