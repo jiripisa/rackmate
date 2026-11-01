@@ -1,9 +1,9 @@
-# Pluginarium
+# Rackmate
 
 Your plugins as instruments in the studio.
 
-Pluginarium turns a Mac into one more instrument, or several, in a studio that
-works without a computer. Pick a saved configuration, and the plugins in it play
+Rackmate turns a Mac into one more instrument, or several, in a studio that
+works without a computer. Pick a saved rack, and the plugins in it play
 over MIDI through the audio channels you chose. It is meant to feel like
 switching on a hardware synth, not like starting a DAW.
 
@@ -29,7 +29,8 @@ Details: [development_workflow.md](development_workflow.md).
 
 ## More
 
-- Design and goals: [docs/superpowers/specs/2026-10-31-pluginarium-design.md](docs/superpowers/specs/2026-10-31-pluginarium-design.md)
+- Website and manual, in English and Czech: https://jiripisa.github.io/rackmate/
+- Design and goals: [docs/superpowers/specs/2026-11-01-rackmate-design.md](docs/superpowers/specs/2026-11-01-rackmate-design.md), which extends [the first design](docs/superpowers/specs/2026-10-31-pluginarium-design.md)
 - Walkthrough results and studio checklist: [docs/studio-session.md](docs/studio-session.md)
 
 ## License

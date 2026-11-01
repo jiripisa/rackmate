@@ -62,11 +62,11 @@ def main() -> None:
     Path(out).write_text(f"""<?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
-    <title>Pluginarium</title>
-    <link>https://jiripisa.github.io/pluginarium/</link>
-    <description>Pluginarium updates</description>
+    <title>Rackmate</title>
+    <link>https://jiripisa.github.io/rackmate/</link>
+    <description>Rackmate updates</description>
     <item>
-      <title>Pluginarium {version}</title>
+      <title>Rackmate {version}</title>
       <sparkle:version>{version}</sparkle:version>
       <sparkle:shortVersionString>{version}</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>{MIN_SYSTEM}</sparkle:minimumSystemVersion>

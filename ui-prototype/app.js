@@ -21,7 +21,7 @@ const PLUGINS = [
   { id: 'jupiter8', name: 'JUPITER-8', vendor: 'Roland', kind: 'instrument', factory: [], sounds: ['Warm Strings', 'Big Sync Lead', 'Glass Pad', 'Poly Stab'] },
   { id: 'jd800', name: 'JD-800', vendor: 'Roland', kind: 'instrument', factory: [], sounds: ['Digital Bell', 'Choir Air', 'Fat Keys'] },
   { id: 'sh101', name: 'SH-101', vendor: 'Roland', kind: 'instrument', factory: [], sounds: ['Rubber Bass', 'Sync Blip', 'Sub Thump'] },
-  { id: 'sp404', name: 'SP-404MKII', vendor: 'Roland', kind: 'instrument', factory: [], sounds: ['Dusty Kit', 'Tape Loop'] },
+  { id: 'sp404', name: 'SP-404MKII', vendor: 'Roland', kind: 'instrument', factory: [], sounds: ['Dusty Kit', 'Tape Loop'], sampler: true },
   { id: 'mariana', name: 'Mariana', vendor: 'Moog', kind: 'instrument', factory: ['Deep Sub', 'Trench', 'Pressure Drop', 'Abyss Lead'], sounds: ['Deep Sub', 'Trench', 'Pressure Drop', 'Abyss Lead'] },
   { id: 'minitaur', name: 'Minitaur Editor-VI', vendor: 'Moog', kind: 'instrument', factory: [], sounds: ['Taurus Low', 'Soft Pluck'] },
   { id: 'prophet', name: 'Prophet-5 V', vendor: 'Arturia', kind: 'instrument', factory: [], sounds: [], notInstalled: true },
@@ -34,12 +34,58 @@ const PLUGINS = [
   { id: 'aulimiter', name: 'AUPeakLimiter', vendor: 'Apple', kind: 'effect', factory: [], sounds: ['Default'] },
 ];
 
-const STORAGE_KEY = 'pluginarium.prototype.v2';
+const STORAGE_KEY = 'rackmate.prototype.v3';
 const MAX_PARALLEL = 3;
+
+/* Generic pictures by plugin type: Audio Units do not supply reliable ones. */
+const GLYPHS = {
+  keys: '<svg viewBox="0 0 54 36" fill="none" stroke="currentColor" aria-hidden="true"><rect x=".5" y=".5" width="53" height="35" rx="1"/><path d="M1 13h52M8.5 13v23M16 13v23M23.500 13v23M31 13v23M38.500 13v23M46 13v23"/><path fill="currentColor" stroke="none" d="M6 13h5v13H6zM13.500 13h5v13h-5zM28.500 13h5v13h-5zM36 13h5v13h-5zM43.500 13h5v13h-5z"/><circle cx="8" cy="7" r="2"/><circle cx="16" cy="7" r="2"/><circle cx="24" cy="7" r="2"/><path d="M33 7h16"/></svg>',
+  pads: '<svg viewBox="0 0 54 36" fill="none" stroke="currentColor" aria-hidden="true"><rect x=".5" y=".5" width="53" height="35" rx="1"/><path d="M6 6h9v10H6zM17.500 6h9v10h-9zM29 6h9v10h-9zM40.500 6h8v10h-8zM6 20h9v10H6zM17.500 20h9v10h-9zM29 20h9v10h-9zM40.500 20h8v10h-8z"/></svg>',
+  effect: '<svg viewBox="0 0 54 36" fill="none" stroke="currentColor" aria-hidden="true"><rect x=".5" y=".5" width="53" height="35" rx="1"/><path d="M5 18c3-11 6-11 9 0s6 11 9 0 6-11 9 0 6 11 9 0 5-8 8-4"/></svg>',
+  slot: '<svg viewBox="0 0 17 17" fill="currentColor" aria-hidden="true"><path d="M1 2h2v13H1zM5 5h2v10H5zM9 1h2v14H9zM13 7h2v8h-2z"/></svg>',
+};
+const OPEN_ICON = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M8 3H2.500v14.500H17V12M11 2.500h6.500V9M17.500 2.500 9 11"/></svg>';
+const FOLLOW_ICON = '<svg viewBox="0 0 24 20" fill="currentColor" aria-hidden="true"><path d="M2 3.500v13l10-6.500zM14.500 4h7.500v12h-7.500z"/></svg>';
+const GEAR_ICON = '<svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"><path d="M9.5 4.8 10.0 2.0 14.0 2.0 14.5 4.8 15.3 5.1 17.6 3.5 20.5 6.4 18.9 8.7 19.2 9.5 22.0 10.0 22.0 14.0 19.2 14.5 18.9 15.3 20.5 17.6 17.6 20.5 15.3 18.9 14.5 19.2 14.0 22.0 10.0 22.0 9.5 19.2 8.7 18.9 6.4 20.5 3.5 17.6 5.1 15.3 4.8 14.5 2.0 14.0 2.0 10.0 4.8 9.5 5.1 8.7 3.5 6.4 6.4 3.5 8.7 5.1Z M12 8.600a3.400 3.400 0 1 0 0 6.800a3.400 3.400 0 1 0 0-6.800Z"/></svg>';
+const MORE_ICON = '<svg viewBox="0 0 4 16" fill="currentColor" aria-hidden="true"><circle cx="2" cy="2.500" r="1.500"/><circle cx="2" cy="8" r="1.500"/><circle cx="2" cy="13.500" r="1.500"/></svg>';
 
 function initialStore() {
   return {
     configs: [
+      {
+        id: 'c0',
+        name: 'Evening set',
+        strips: [
+          {
+            id: 'e1', type: 'instrument', pluginId: 'tb303', preset: 'Acid bass', sound: null, midiDevice: 'Hapax', midiChannel: 1, audioIn: null, audioOut: 'Out 3–4',
+            chain: [[{ id: 'e1a', pluginId: 'audelay', preset: null, sound: null }]],
+          },
+          {
+            id: 'e2', type: 'instrument', pluginId: 'jupiter8', preset: 'Brass pad', sound: null, midiDevice: 'KeyLab', midiChannel: 2, audioIn: null, audioOut: 'Out 1–2',
+            chain: [[{ id: 'e2a', pluginId: 'audelay', preset: null, sound: null }, { id: 'e2b', pluginId: 'aureverb', preset: null, sound: null }]],
+          },
+          {
+            id: 'e3', type: 'instrument', pluginId: 'mariana', preset: 'Glass keys', sound: null, midiDevice: 'KeyLab', midiChannel: 3, audioIn: null, audioOut: 'Out 1–2',
+            chain: [[{ id: 'e3a', pluginId: 'audelay', preset: null, sound: null }], [{ id: 'e3b', pluginId: 'aureverb', preset: null, sound: null, on: false }]],
+          },
+          { id: 'e4', type: 'instrument', pluginId: 'tb303', preset: 'Acid bass', sound: null, midiDevice: null, midiChannel: 'All', audioIn: null, audioOut: 'Out 3–4', chain: [] },
+        ],
+      },
+      {
+        id: 'cf',
+        name: 'From the studio',
+        topFault: 'Microphone access denied, inputs are silent',
+        strips: [
+          {
+            id: 'x1', type: 'instrument', pluginId: 'tb303', preset: 'Acid bass', sound: null, midiDevice: 'Launchpad', midiChannel: 1, audioIn: null, audioOut: 'Out 3–4',
+            chain: [[{ id: 'x1a', pluginId: 'audelay', preset: null, sound: null }], [{ id: 'x1b', pluginId: 'valhalla', preset: null, sound: null, failed: true }]],
+          },
+          { id: 'x2', type: 'instrument', pluginId: 'prophet', preset: null, sound: null, midiDevice: 'KeyLab', midiChannel: 2, audioIn: null, audioOut: 'Out 3–4', chain: [] },
+          { id: 'x3', type: 'instrument', pluginId: 'jupiter8', preset: 'Brass pad', sound: null, midiDevice: null, midiChannel: 'All', audioIn: null, audioOut: 'Out 15–16', missingOut: true, chain: [] },
+          { id: 'x4', type: 'instrument', pluginId: 'mariana', preset: 'Glass keys', sound: null, midiDevice: 'Hapax', midiChannel: 3, audioIn: null, audioOut: 'Out 1–2', failed: true, chain: [] },
+          { id: 'x5', type: 'instrument', pluginId: 'jd800', preset: null, sound: null, midiDevice: 'Hapax', midiChannel: 4, audioIn: null, audioOut: 'Out 1–2', loading: true, chain: [] },
+        ],
+      },
       {
         id: 'c1',
         name: '303 + Jupiter',
@@ -49,7 +95,7 @@ function initialStore() {
             id: 's2', type: 'instrument', pluginId: 'jupiter8', preset: 'Brass Pad', sound: null, midiDevice: 'KeyLab', midiChannel: 2, audioIn: null, audioOut: 'Out 7–8',
             chain: [
               [{ id: 'f1', pluginId: 'zendelay', preset: null, sound: 'Dub Echo' }],
-              [{ id: 'f2', pluginId: 'valhalla', preset: 'Dark Hall', sound: null }, { id: 'f3', pluginId: 'audelay', preset: 'Short', sound: null }],
+              [{ id: 'f2', pluginId: 'valhalla', preset: 'Dark Hall', sound: null }, { id: 'f3', pluginId: 'audelay', preset: 'Short', sound: null }, { id: 'f3b', pluginId: 'aulimiter', preset: null, sound: null }],
             ],
           },
         ],
@@ -90,8 +136,9 @@ function initialStore() {
       },
     ],
     presets: {
-      tb303: ['Acid Bass 04', 'Rolling 16ths'],
-      jupiter8: ['Brass Pad', 'Night Lead'],
+      tb303: ['Acid bass', 'Acid Bass 04', 'Rolling 16ths'],
+      jupiter8: ['Brass pad', 'Brass Pad', 'Night Lead'],
+      mariana: ['Glass keys'],
       valhalla: ['Dark Hall'],
     },
     recent: ['jupiter8', 'tb303', 'valhalla'],
@@ -189,6 +236,19 @@ function deviceConnected(name) {
   return MIDI_DEVICES.some((device) => device.name === name && device.connected);
 }
 
+function follows(target, isEffect) {
+  return target.follows ?? isEffect;
+}
+
+function glyphOf(plugin) {
+  if (plugin.kind === 'effect') return GLYPHS.effect;
+  return plugin.sampler ? GLYPHS.pads : GLYPHS.keys;
+}
+
+function earHtml() {
+  return '<div class="ear" aria-hidden="true"><span class="screw"></span><span class="hole"></span><span class="screw"></span></div>';
+}
+
 function clockRunning() {
   return deviceConnected(store.settings.clockSource);
 }
@@ -209,7 +269,10 @@ function optionList(values, selected, labelOf = (value) => value) {
 }
 
 function midiDeviceOptions(selected) {
-  return optionList(MIDI_DEVICES.map((device) => device.name), selected, (name) => (deviceConnected(name) ? name : `${name} (not connected)`));
+  return optionList(['', ...MIDI_DEVICES.map((device) => device.name)], selected ?? '', (name) => {
+    if (!name) return 'No MIDI';
+    return deviceConnected(name) ? name : `${name} (not connected)`;
+  });
 }
 
 function sidechainOptions(selected) {
@@ -218,6 +281,7 @@ function sidechainOptions(selected) {
 
 function routeValue(key, value) {
   if (key === 'midiChannel' && value !== 'All') return Number(value);
+  if (key === 'midiDevice' && value === '') return null;
   if (key === 'sidechainIn' && value === 'Off') return null;
   return value;
 }
@@ -227,24 +291,28 @@ function routeValue(key, value) {
 function startScreen() {
   return `
     <section class="start">
-      <div>
-        <h1 class="wordmark">Pluginarium</h1>
-        <p class="tagline">Your plugins as instruments in the studio.</p>
-        <div class="power"><span class="led" aria-hidden="true"></span>Ready</div>
-      </div>
-      <div>
-        <div class="configs">
-          ${store.configs.map((config) => `
-            <button class="config-row" data-action="loadConfig" data-id="${config.id}">
-              <strong>${esc(config.name)}</strong>
-              <span>${esc(configSummary(config))}</span>
-            </button>`).join('')}
+      ${earHtml()}
+      <div class="plate">
+        <div>
+          <h1 class="wordmark">Rackmate</h1>
+          <p class="tagline">Your plugins as instruments in the studio.</p>
+          <div class="power"><span class="led" aria-hidden="true"></span>Ready</div>
         </div>
-        <div class="start-actions">
-          <button class="key primary" data-action="newConfig">New configuration</button>
-          <button class="key" data-action="showSettings">Settings</button>
+        <div>
+          <div class="configs">
+            ${store.configs.map((config) => `
+              <button class="config-row" data-action="loadConfig" data-id="${config.id}">
+                <strong>${esc(config.name)}</strong>
+                <span>${esc(configSummary(config))}</span>
+              </button>`).join('')}
+          </div>
+          <div class="start-actions">
+            <button class="key primary" data-action="newConfig">New rack</button>
+            <button class="key" data-action="showSettings">Settings</button>
+          </div>
         </div>
       </div>
+      ${earHtml()}
     </section>`;
 }
 
@@ -261,102 +329,195 @@ function cpuLoad() {
 
 function mixerScreen() {
   const { config, dirty, savedId } = session;
-  const name = config.name || 'New configuration';
+  const name = config.name || 'New rack';
   return `
     <header class="topbar">
+      <span class="brand">Rackmate</span>
+      <span class="divider" aria-hidden="true"></span>
       <button class="config-name" data-action="configMenu" aria-haspopup="menu">${esc(name)}<span class="caret" aria-hidden="true">▾</span></button>
       ${dirty ? '<span class="status">Unsaved changes</span><button class="key" data-action="save">Save</button>' : ''}
       ${!dirty && savedId ? '<span class="status">Saved</span>' : ''}
       <span class="spacer"></span>
+      ${config.topFault ? `<span class="readout fault"><span class="led fault" aria-hidden="true"></span>${esc(config.topFault)}</span>` : ''}
       ${clockReadout()}
       <span class="readout">CPU ${cpuLoad()} %</span>
-      <button class="key" data-action="showSettings">Settings</button>
+      <span class="divider" aria-hidden="true"></span>
+      <button class="icon-key small" data-action="showSettings" aria-label="Settings" title="Settings">${GEAR_ICON}</button>
     </header>
-    <section class="strips" aria-label="Instruments and effects">
+    <section class="rack" aria-label="Instruments and effects">
       ${config.strips.map(stripHtml).join('')}
-      <button class="add-strip" data-action="addStrip">Add instrument or effect</button>
-    </section>
-    <footer class="note">Prototype: no sound, and plugin windows are stand-ins. Presets, channels and devices are samples.</footer>`;
+      <div class="unit">
+        ${earHtml()}
+        <div class="plate adder"><button class="add-row" data-action="addStrip"><b aria-hidden="true">+</b>Add instrument or effect</button></div>
+        ${earHtml()}
+      </div>
+      <div class="unit vent" aria-hidden="true">
+        ${earHtml()}
+        <div class="plate"><div class="vent-slots"></div></div>
+        ${earHtml()}
+      </div>
+    </section>`;
 }
 
 function stripHtml(strip, index) {
   const plugin = pluginOf(strip.pluginId);
   const isOpen = session.windows.some((win) => win.stripId === strip.id && !win.fxId);
+  const isEffect = strip.type === 'effect';
+  const usable = !plugin.notInstalled && !strip.failed && !strip.loading;
+  const isLive = usable && (isEffect || deviceConnected(strip.midiDevice));
+  const follow = follows(strip, isEffect);
+  const fault = plugin.notInstalled ? 'Plugin not installed on this Mac' : strip.failed ? 'Plugin failed to load' : null;
   return `
-    <article class="strip${strip.type === 'effect' ? ' standalone' : ''}" data-strip="${strip.id}">
-      <div class="strip-head">
-        <span>${index + 1}</span>
-        <button class="remove" data-action="removeStrip" data-strip="${strip.id}" aria-label="Remove ${esc(plugin.name)}" title="Remove">×</button>
+    <article class="unit${isEffect ? ' standalone' : ''}" data-strip="${strip.id}">
+      ${earHtml()}
+      <div class="plate channel">
+        <div class="position">
+          <span class="no">${String(index + 1).padStart(2, '0')}</span>
+          <button class="remove" data-action="removeStrip" data-strip="${strip.id}" aria-label="Remove ${esc(plugin.name)}" title="Remove">×</button>
+          <span class="led off" data-activity="${isLive}" title="${isEffect ? 'Lights when audio comes in' : 'Lights when MIDI comes in'}"></span>
+        </div>
+        <div class="inputs">
+          ${isEffect ? '' : midiInHtml(strip)}
+          ${isEffect || plugin.audioIn ? audioInHtml(strip) : ''}
+          ${plugin.sidechain ? sidechainInHtml(strip) : ''}
+        </div>
+        <div class="ident">
+          ${plugin.vendor ? `<span class="legend vendor">${esc(plugin.vendor)}</span>` : ''}
+          <div class="ident-top">
+            <span class="glyph">${glyphOf(plugin)}</span>
+            <h2 class="plugin-name${fault ? ' fault' : ''}" title="${esc(fault ?? plugin.name)}">${esc(plugin.name)}${fault ? `<span class="sr-only">. ${esc(fault)}</span>` : ''}</h2>
+          </div>
+          ${identDisplay(strip, plugin)}
+        </div>
+        <div class="keys">
+          <button class="icon-key" data-action="togglePlugin" data-strip="${strip.id}" aria-pressed="${isOpen}" aria-label="${isOpen ? 'Close plugin' : 'Open plugin'}" title="${isOpen ? 'Close plugin' : 'Open plugin'}"${usable ? '' : ' disabled'}>${OPEN_ICON}</button>
+          <button class="icon-key" data-action="toggleFollow" data-strip="${strip.id}" aria-pressed="${follow}" aria-label="Follow Start/Stop" title="Follow Start/Stop: ${follow ? 'On' : 'Off'}">${FOLLOW_ICON}</button>
+        </div>
+        <div class="effects" data-effects="${strip.id}">
+          <span class="legend">Effects</span>
+          <div class="chain">
+            ${strip.chain.map((row, rowIndex) => rowHtml(strip, row, rowIndex)).join('<span class="arrow" aria-hidden="true"></span>')}
+            ${strip.chain.length ? '<span class="arrow" aria-hidden="true"></span>' : ''}
+            <button class="add-fx" data-action="addInsert" data-strip="${strip.id}" aria-label="Add effect"><b aria-hidden="true">+</b><span>Add effect</span></button>
+          </div>
+        </div>
+        <div class="output">
+          ${routeDisplay(strip, 'audioOut', 'Audio out', strip.missingOut)}
+          ${strip.missingOut ? `<div class="warning"><span class="led fault" aria-hidden="true"></span>${esc(strip.audioOut)} is not available on this device</div>` : ''}
+          <div class="meter" data-meter="${usable ? strip.id : 'off'}" aria-hidden="true">
+            <div class="meter-row">L<div class="meter-bar"><i></i></div></div>
+            <div class="meter-row">R<div class="meter-bar"><i></i></div></div>
+          </div>
+        </div>
       </div>
-      ${strip.type === 'instrument' ? midiInHtml(strip) : ''}
-      ${strip.type === 'effect' || plugin.audioIn ? audioInHtml(strip) : ''}
-      ${plugin.sidechain ? sidechainInHtml(strip) : ''}
-      <div>
-        <h2 class="plugin-name" title="${esc(plugin.name)}">${esc(plugin.name)}</h2>
-        ${plugin.notInstalled ? `
-          <div class="fault-box">
-            <span>Plugin not installed on this Mac</span>
-            <button class="key" data-action="replacePlugin" data-strip="${strip.id}">Replace plugin</button>
-          </div>` : `
-          <button class="preset" data-action="presetMenu" data-strip="${strip.id}" aria-haspopup="menu">
-            <span>${esc(soundLabel(strip))}</span><span class="caret" aria-hidden="true">▾</span>
-          </button>`}
-      </div>
-      ${plugin.notInstalled ? '' : `
-        <button class="open" data-action="togglePlugin" data-strip="${strip.id}" aria-pressed="${isOpen}">
-          <span class="led${isOpen ? '' : ' off'}" aria-hidden="true"></span>${isOpen ? 'Close plugin' : 'Open plugin'}
-        </button>`}
-      <div class="slots">
-        <span class="legend">Effects</span>
-        ${strip.chain.map((row, rowIndex) => rowHtml(strip, row, rowIndex)).join('')}
-        <button class="slot-empty" data-action="addInsert" data-strip="${strip.id}">Add effect</button>
-      </div>
-      <div class="meter" data-meter="${plugin.notInstalled ? 'off' : strip.id}" aria-hidden="true"><div><i></i></div><div><i></i></div></div>
-      <label>
-        <span class="legend">Audio out</span>
-        <select class="field" id="${strip.id}-audioOut" data-change="stripField" data-strip="${strip.id}" data-key="audioOut">${optionList(AUDIO_OUTPUTS, strip.audioOut)}</select>
-      </label>
+      ${earHtml()}
     </article>`;
 }
 
+function identDisplay(strip, plugin) {
+  if (plugin.notInstalled) return `<button class="key replace" data-action="replacePlugin" data-strip="${strip.id}">Replace plugin</button>`;
+  if (strip.failed) return `<div class="preset quiet"><span>${esc(soundLabel(strip))}</span></div>`;
+  if (strip.loading) return '<div class="preset quiet"><span>Loading</span></div>';
+  return `
+    <button class="preset" data-action="presetMenu" data-strip="${strip.id}" aria-haspopup="menu">
+      <span>${esc(soundLabel(strip))}</span><span class="caret" aria-hidden="true">▼</span>
+    </button>`;
+}
+
+/* A seven-segment display drawn as vectors, with the unlit segments faintly visible. */
+const SEGMENTS = {
+  a: '2.200,1 11.800,1 9.800,3.400 4.200,3.400',
+  b: '12.600,1.800 12.600,12.200 11.400,13 10.200,11.800 10.200,4.200',
+  c: '12.600,13.800 12.600,24.200 10.200,21.800 10.200,14.200 11.400,13',
+  d: '2.200,25 11.800,25 9.800,22.600 4.200,22.600',
+  e: '1.400,13.800 1.400,24.200 3.800,21.800 3.800,14.200 2.600,13',
+  f: '1.400,1.800 1.400,12.200 2.600,13 3.800,11.800 3.800,4.200',
+  g: '3,13 4.200,11.800 9.800,11.800 11,13 9.800,14.200 4.200,14.200',
+};
+const SEGMENT_MAP = {
+  0: 'abcdef', 1: 'bc', 2: 'abdeg', 3: 'abcdg', 4: 'bcfg', 5: 'acdfg', 6: 'acdefg', 7: 'abc', 8: 'abcdefg', 9: 'abcdfg',
+  A: 'abcefg', F: 'aefg', L: 'def', O: 'abcdef', '-': 'g', ' ': '',
+};
+
+function sevenSegment(text) {
+  const digits = [...text].map((char, index) => {
+    const lit = SEGMENT_MAP[char];
+    const shapes = Object.entries(SEGMENTS).map(([name, points]) => `<polygon points="${points}" class="${lit.includes(name) ? 'lit' : 'unlit'}"/>`).join('');
+    return `<g transform="translate(${index * 15 + 2} 0) skewX(-5)">${shapes}</g>`;
+  }).join('');
+  return `<svg class="segments" viewBox="0 0 ${text.length * 15 + 2} 26" aria-hidden="true">${digits}</svg>`;
+}
+
+function channelLabel(strip) {
+  if (!strip.midiDevice) return 'Off';
+  return strip.midiChannel === 'All' ? 'All' : `Channel ${strip.midiChannel}`;
+}
+
+function channelDigits(strip) {
+  if (!strip.midiDevice) return '---';
+  return strip.midiChannel === 'All' ? 'ALL' : String(strip.midiChannel).padStart(3, ' ');
+}
+
 function midiInHtml(strip) {
-  const channelId = `${strip.id}-midiChannel`;
+  const missing = strip.midiDevice && !deviceConnected(strip.midiDevice);
+  const device = !strip.midiDevice ? 'No MIDI' : missing ? `${strip.midiDevice} is not connected` : strip.midiDevice;
+  return `
+    <div class="midi-in">
+      <span class="legend">MIDI in</span>
+      <button class="channel-display" id="${strip.id}-channel" data-action="midiChannelMenu" data-strip="${strip.id}" data-menu="${strip.id}-channel" aria-haspopup="menu" aria-label="MIDI channel: ${esc(channelLabel(strip))}" title="MIDI channel"${strip.midiDevice ? '' : ' disabled'}>
+        <span class="unit-label" aria-hidden="true">CH</span>${sevenSegment(channelDigits(strip))}
+      </button>
+      <button class="device-value${missing ? ' fault' : strip.midiDevice ? '' : ' none'}" id="${strip.id}-device" data-action="midiDeviceMenu" data-strip="${strip.id}" data-menu="${strip.id}-device" aria-haspopup="menu" aria-label="MIDI device: ${esc(device)}" title="MIDI device"><span>${esc(device)}</span></button>
+    </div>`;
+}
+
+function routeDigits(value) {
+  if (!value) return '  OFF';
+  return value.replace(/^(In|Out) /, '').replace('–', '-').padStart(5, ' ');
+}
+
+function routeDisplay(strip, key, legend, isMissing = false) {
+  const value = strip[key];
   return `
     <div>
-      <span class="legend">MIDI in</span>
-      <div class="route-pair">
-        <select class="field" id="${strip.id}-midiDevice" aria-label="MIDI device" data-change="stripField" data-strip="${strip.id}" data-key="midiDevice">${midiDeviceOptions(strip.midiDevice)}</select>
-        <select class="field" id="${channelId}" aria-label="MIDI channel" data-change="stripField" data-strip="${strip.id}" data-key="midiChannel">${optionList(MIDI_CHANNELS, strip.midiChannel)}</select>
-      </div>
-      ${deviceConnected(strip.midiDevice) ? '' : `<div class="warning"><span class="led fault" aria-hidden="true"></span>${esc(strip.midiDevice)} is not connected</div>`}
+      <span class="legend">${esc(legend)}</span>
+      <button class="channel-display audio${isMissing ? ' fault' : ''}${value ? '' : ' idle'}" id="${strip.id}-${key}" data-action="routeMenu" data-strip="${strip.id}" data-key="${key}" data-menu="${strip.id}-${key}" aria-haspopup="menu" aria-label="${esc(legend)}: ${esc(value ?? 'Off')}" title="${esc(legend)}">
+        ${sevenSegment(routeDigits(value))}
+      </button>
     </div>`;
 }
 
 function audioInHtml(strip) {
-  return `
-    <label>
-      <span class="legend">Audio in</span>
-      <select class="field" id="${strip.id}-audioIn" data-change="stripField" data-strip="${strip.id}" data-key="audioIn">${optionList(AUDIO_INPUTS, strip.audioIn)}</select>
-    </label>`;
+  return routeDisplay(strip, 'audioIn', 'Audio in');
 }
 
 function sidechainInHtml(strip) {
+  return routeDisplay(strip, 'sidechainIn', 'Sidechain in');
+}
+
+function fxHtml(strip, fx, rowIndex) {
+  const plugin = pluginOf(fx.pluginId);
+  const data = `data-strip="${strip.id}" data-fx="${fx.id}" data-row="${rowIndex}"`;
+  const isOn = fx.on !== false;
+  const isOpen = session.windows.some((win) => win.stripId === strip.id && win.fxId === fx.id);
+  const title = fx.failed ? `${plugin.name} failed to load` : `${plugin.name}: ${isOpen ? 'close' : 'open'} plugin`;
   return `
-    <label>
-      <span class="legend">Sidechain in</span>
-      <select class="field" id="${strip.id}-sidechainIn" data-change="stripField" data-strip="${strip.id}" data-key="sidechainIn">${sidechainOptions(strip.sidechainIn)}</select>
-    </label>`;
+    <div class="fx${fx.failed ? ' fault' : isOn ? '' : ' off'}${isOpen ? ' is-open' : ''}" data-fx="${fx.id}" data-strip="${strip.id}">
+      <div class="fx-body">
+        <button class="fx-open" data-action="toggleFxPlugin" ${data} title="${esc(title)}"${fx.failed ? ' disabled' : ''}>${GLYPHS.slot}<span>${esc(plugin.name)}</span></button>
+        <button class="fx-switch" role="switch" aria-checked="${isOn}" aria-label="${esc(plugin.name)} on" title="${fx.failed ? 'Failed to load' : isOn ? 'Turn effect off' : 'Turn effect on'}" data-action="toggleFx" ${data}${fx.failed ? ' disabled' : ''}>
+          <span class="led${fx.failed ? ' fault' : isOn ? '' : ' off'}" aria-hidden="true"></span>
+        </button>
+        <button class="fx-more" data-action="fxMenu" ${data} aria-haspopup="menu" aria-label="${esc(plugin.name)} menu" title="Menu">${MORE_ICON}</button>
+      </div>
+      ${fx.sidechainIn ? `<span class="sidechain-note">Sidechain from ${esc(fx.sidechainIn)}</span>` : ''}
+    </div>`;
 }
 
 function rowHtml(strip, row, rowIndex) {
-  const parallel = row.length > 1;
   return `
-    <div class="fx-row${parallel ? ' parallel' : ''}" style="grid-template-columns: repeat(${row.length}, minmax(0, 1fr))">
-      ${row.map((fx) => {
-        const plugin = pluginOf(fx.pluginId);
-        const title = fx.sidechainIn ? `${plugin.name}, sidechain from ${fx.sidechainIn}` : plugin.name;
-        return `<button class="fx" data-action="fxMenu" data-strip="${strip.id}" data-fx="${fx.id}" data-row="${rowIndex}" title="${esc(title)}" aria-haspopup="menu">${esc(plugin.name)}</button>${fx.sidechainIn ? `<span class="sidechain-note">Sidechain from ${esc(fx.sidechainIn)}</span>` : ''}`;
-      }).join('')}
+    <div class="stage${row.length > 1 ? ' parallel' : ''}">
+      ${row.map((fx) => fxHtml(strip, fx, rowIndex)).join('')}
     </div>`;
 }
 
@@ -364,11 +525,15 @@ function settingsScreen() {
   const { settings } = store;
   return `
     <header class="topbar">
+      <span class="brand">Rackmate</span>
+      <span class="divider" aria-hidden="true"></span>
       <span class="config-name">Settings</span>
       <span class="spacer"></span>
       <button class="key" data-action="closeSettings">Done</button>
     </header>
-    <div class="settings">
+    <div class="settings-shell">
+    ${earHtml()}
+    <div class="plate settings">
       <section>
         <h2>Audio</h2>
         <p>Plugins play and listen through this device.</p>
@@ -387,7 +552,7 @@ function settingsScreen() {
       </section>
       <section>
         <h2>Instrument positions</h2>
-        <p>A new instrument takes the routing of its position in the stack. You can change it on the channel afterwards.</p>
+        <p>A new instrument takes the routing of its position in the rack. You can change it on the channel afterwards.</p>
         <table>
           <thead><tr><th>Position</th><th>MIDI device</th><th>Channel</th><th>Audio out</th></tr></thead>
           <tbody>
@@ -418,9 +583,11 @@ function settingsScreen() {
       </section>
       <section>
         <h2>Prototype</h2>
-        <p>Restores the sample configurations and presets.</p>
+        <p>No sound, and plugin windows are stand-ins. Presets, channels and devices are samples. This restores them.</p>
         <button class="key" data-action="resetPrototype">Reset sample data</button>
       </section>
+    </div>
+    ${earHtml()}
     </div>`;
 }
 
@@ -438,14 +605,14 @@ function positionSelect(list, index, key, options, label) {
 
 function render() {
   closeMenu();
-  const scroller = app.querySelector('.strips');
-  const scrollLeft = scroller ? scroller.scrollLeft : 0;
+  const scrollers = [...app.querySelectorAll('.rack, .chain')].map((node) => [node.scrollTop, node.scrollLeft]);
   const focusedId = document.activeElement && document.activeElement.id;
   if (session.screen === 'start') app.innerHTML = startScreen();
   else if (session.screen === 'settings') app.innerHTML = settingsScreen();
   else app.innerHTML = mixerScreen();
-  const nextScroller = app.querySelector('.strips');
-  if (nextScroller) nextScroller.scrollLeft = scrollLeft;
+  app.querySelectorAll('.rack, .chain').forEach((node, index) => {
+    if (scrollers[index]) [node.scrollTop, node.scrollLeft] = scrollers[index];
+  });
   if (focusedId) document.getElementById(focusedId)?.focus();
   renderWindows();
   paintMeters(0);
@@ -508,7 +675,7 @@ function closeWindow(stripId, fxId) {
 /* Menus */
 
 function openMenu(anchor, html) {
-  const key = anchor.dataset.fx || anchor.dataset.strip || anchor.dataset.action;
+  const key = anchor.dataset.menu || anchor.dataset.fx || anchor.dataset.strip || anchor.dataset.action;
   const toggled = !menu.hidden && menu.dataset.anchor === key;
   closeMenu();
   if (toggled) return;
@@ -547,10 +714,15 @@ function fxMenuHtml(strip, fx, rowIndex) {
   const row = strip.chain[rowIndex];
   const isOpen = session.windows.some((win) => win.stripId === strip.id && win.fxId === fx.id);
   const data = `data-strip="${strip.id}" data-fx="${fx.id}" data-row="${rowIndex}"`;
+  if (fx.failed) {
+    return `<button role="menuitem" data-action="removeFx" ${data}>Remove</button>`;
+  }
   return `
     <button role="menuitem" data-action="toggleFxPlugin" ${data}>${isOpen ? 'Close plugin' : 'Open plugin'}</button>
+    <button role="menuitem" data-action="toggleFx" ${data}>${fx.on === false ? 'Turn effect on' : 'Turn effect off'}</button>
     <button role="menuitem" data-action="fxPresetMenu" ${data}>Presets: ${esc(soundLabel(fx))}</button>
     ${pluginOf(fx.pluginId).sidechain ? `<button role="menuitem" data-action="fxSidechainMenu" ${data}>Sidechain in: ${esc(fx.sidechainIn ?? 'Off')}</button>` : ''}
+    <button role="menuitem" data-action="toggleFollow" ${data}>Follow Start/Stop: ${follows(fx, true) ? 'On' : 'Off'}</button>
     <hr>
     ${row.length < MAX_PARALLEL ? `<button role="menuitem" data-action="addParallel" ${data}>Add parallel effect</button>` : ''}
     ${row.length > 1 ? `<button role="menuitem" data-action="moveToSeries" ${data}>Move to series</button>` : ''}
@@ -565,12 +737,59 @@ function sidechainMenuHtml(strip, fx) {
     ${AUDIO_INPUTS.map((input) => item(input, input)).join('')}`;
 }
 
+/* Moves an effect. before/after make it a series stage beside the target's row, above/below put
+   it in the target's parallel row, and end appends it to the chain of toStrip. */
+function moveFx(fromStrip, fx, toStrip, targetId, where) {
+  const fromRow = fromStrip.chain.find((row) => row.includes(fx));
+  fromRow.splice(fromRow.indexOf(fx), 1);
+  fromStrip.chain = fromStrip.chain.filter((row) => row.length);
+  if (where === 'end') {
+    toStrip.chain.push([fx]);
+  } else {
+    const rowIndex = toStrip.chain.findIndex((row) => row.some((item) => item.id === targetId));
+    const row = toStrip.chain[rowIndex];
+    const fxIndex = row.findIndex((item) => item.id === targetId);
+    if (where === 'before') toStrip.chain.splice(rowIndex, 0, [fx]);
+    if (where === 'after') toStrip.chain.splice(rowIndex + 1, 0, [fx]);
+    if (where === 'above') row.splice(fxIndex, 0, fx);
+    if (where === 'below') row.splice(fxIndex + 1, 0, fx);
+  }
+  session.windows.filter((win) => win.fxId === fx.id).forEach((win) => { win.stripId = toStrip.id; });
+}
+
+function routeMenuHtml(strip, key) {
+  const legends = { audioOut: 'Audio out', audioIn: 'Audio in', sidechainIn: 'Sidechain in' };
+  const values = { audioOut: AUDIO_OUTPUTS, audioIn: AUDIO_INPUTS, sidechainIn: AUDIO_INPUTS }[key];
+  const item = (label, value) => `<button role="menuitem" class="${(strip[key] ?? '') === value ? 'current' : ''}" data-action="pickRoute" data-strip="${strip.id}" data-key="${key}" data-value="${esc(value)}">${esc(label)}</button>`;
+  return `
+    <span class="legend">${legends[key]}</span>
+    ${key === 'sidechainIn' ? item('Off', '') : ''}
+    <div class="route-grid">${values.map((value) => item(value, value)).join('')}</div>`;
+}
+
+function midiDeviceMenuHtml(strip) {
+  const item = (label, value) => `<button role="menuitem" class="${(strip.midiDevice ?? '') === value ? 'current' : ''}" data-action="pickMidiDevice" data-strip="${strip.id}" data-device="${esc(value)}">${esc(label)}</button>`;
+  return `
+    <span class="legend">MIDI device</span>
+    ${item('No MIDI', '')}
+    <hr>
+    ${MIDI_DEVICES.map((device) => item(device.connected ? device.name : `${device.name} (not connected)`, device.name)).join('')}`;
+}
+
+function midiChannelMenuHtml(strip) {
+  const item = (value) => `<button role="menuitem" class="${strip.midiChannel === value ? 'current' : ''}" data-action="pickMidiChannel" data-strip="${strip.id}" data-channel="${value}">${value}</button>`;
+  return `
+    <span class="legend">MIDI channel</span>
+    ${item('All')}
+    <div class="channel-grid">${MIDI_CHANNELS.slice(1).map(item).join('')}</div>`;
+}
+
 function configMenuHtml() {
   return `
-    <span class="legend">Load configuration</span>
+    <span class="legend">Load rack</span>
     ${store.configs.map((config) => `<button role="menuitem" class="${config.id === session.savedId ? 'current' : ''}" data-action="loadConfig" data-id="${config.id}">${esc(config.name)}</button>`).join('')}
     <hr>
-    <button role="menuitem" data-action="newConfig">New configuration</button>
+    <button role="menuitem" data-action="newConfig">New rack</button>
     <button role="menuitem" data-action="saveAs">Save as</button>`;
 }
 
@@ -634,7 +853,7 @@ function leaveConfig(next) {
     next();
     return;
   }
-  const name = session.config.name || 'this new configuration';
+  const name = session.config.name || 'this new rack';
   choiceDialog({
     title: 'Save changes?',
     text: `Do you want to save the changes to ${name}?`,
@@ -649,7 +868,7 @@ function leaveConfig(next) {
 function saveConfig(after = () => {}) {
   if (!session.savedId) {
     nameDialog({
-      title: 'Save configuration',
+      title: 'Save rack',
       label: 'Name',
       value: session.config.name,
       confirm: 'Save',
@@ -719,7 +938,7 @@ function openAdd(target, mode) {
   session.add = { target, mode, query: '', pluginId: null, preset: null, routing: nextRouting(mode) };
   session.add.pluginId = defaultPluginId();
   const replacing = target.kind === 'replace';
-  const title = target.kind === 'insert' ? `Add effect to ${pluginOf(stripOf(target.stripId).pluginId).name}` : replacing ? 'Replace plugin' : 'Add to stack';
+  const title = target.kind === 'insert' ? `Add effect to ${pluginOf(stripOf(target.stripId).pluginId).name}` : replacing ? 'Replace plugin' : 'Add to rack';
   showDialog(`
     <h2>${esc(title)}</h2>
     ${target.kind === 'strip' ? `
@@ -838,7 +1057,7 @@ function savePreset(stripId, fxId) {
     label: `Preset name for ${plugin.name}`,
     value: target.preset || target.sound || '',
     confirm: 'Save preset',
-    note: 'The preset stays available for this plugin in all configurations.',
+    note: 'The preset stays available for this plugin in all racks.',
     onConfirm: (name) => {
       const mine = store.presets[plugin.id] || [];
       if (!mine.includes(name)) store.presets[plugin.id] = [...mine, name];
@@ -849,7 +1068,7 @@ function savePreset(stripId, fxId) {
       if (session.savedId) askToStoreInConfig(name);
       else {
         render();
-        showToast(`${name} saved. It joins this configuration when you save it.`);
+        showToast(`${name} saved. It joins this rack when you save it.`);
       }
     },
   });
@@ -858,11 +1077,11 @@ function savePreset(stripId, fxId) {
 function askToStoreInConfig(presetName) {
   render();
   choiceDialog({
-    title: 'Update configuration?',
+    title: 'Update rack?',
     text: `${presetName} is saved as a preset. Do you also want to use it in ${session.config.name}?`,
     buttons: [
       { label: 'Not now', onClick: () => {} },
-      { label: 'Save configuration', primary: true, onClick: () => saveConfig() },
+      { label: 'Save rack', primary: true, onClick: () => saveConfig() },
     ],
   });
 }
@@ -910,7 +1129,7 @@ const actions = {
   resetPrototype() {
     choiceDialog({
       title: 'Reset sample data?',
-      text: 'Configurations and presets you created in the prototype will be removed.',
+      text: 'Racks and presets you created in the prototype will be removed.',
       buttons: [
         { label: 'Cancel', onClick: () => {} },
         {
@@ -963,7 +1182,7 @@ const actions = {
     const strip = stripOf(stripId);
     choiceDialog({
       title: 'Remove channel?',
-      text: `${pluginOf(strip.pluginId).name} and its effects will be removed from this configuration.`,
+      text: `${pluginOf(strip.pluginId).name} and its effects will be removed from this rack.`,
       buttons: [
         { label: 'Cancel', onClick: () => {} },
         {
@@ -1028,6 +1247,41 @@ const actions = {
   savePreset(el) {
     savePreset(el.dataset.strip, el.dataset.fx || null);
   },
+  routeMenu(el) {
+    openMenu(el, routeMenuHtml(stripOf(el.dataset.strip), el.dataset.key));
+  },
+  pickRoute(el) {
+    const strip = stripOf(el.dataset.strip);
+    strip[el.dataset.key] = el.dataset.value || null;
+    if (el.dataset.key === 'audioOut') delete strip.missingOut;
+    touch();
+  },
+  midiDeviceMenu(el) {
+    openMenu(el, midiDeviceMenuHtml(stripOf(el.dataset.strip)));
+  },
+  midiChannelMenu(el) {
+    openMenu(el, midiChannelMenuHtml(stripOf(el.dataset.strip)));
+  },
+  pickMidiDevice(el) {
+    stripOf(el.dataset.strip).midiDevice = routeValue('midiDevice', el.dataset.device);
+    touch();
+  },
+  pickMidiChannel(el) {
+    stripOf(el.dataset.strip).midiChannel = routeValue('midiChannel', el.dataset.channel);
+    touch();
+  },
+  toggleFx(el) {
+    const fx = findFx(stripOf(el.dataset.strip), el.dataset.fx);
+    fx.on = fx.on === false;
+    touch();
+  },
+  toggleFollow(el) {
+    const strip = stripOf(el.dataset.strip);
+    const { fx: fxId } = el.dataset;
+    const target = fxId ? findFx(strip, fxId) : strip;
+    target.follows = !follows(target, fxId ? true : strip.type === 'effect');
+    touch();
+  },
   fxMenu(el) {
     const strip = stripOf(el.dataset.strip);
     openMenu(el, fxMenuHtml(strip, findFx(strip, el.dataset.fx), Number(el.dataset.row)));
@@ -1051,10 +1305,6 @@ const actions = {
 };
 
 const changes = {
-  stripField(el) {
-    stripOf(el.dataset.strip)[el.dataset.key] = routeValue(el.dataset.key, el.value);
-    touch();
-  },
   setting(el) {
     store.settings[el.dataset.key] = el.value;
     persist();
@@ -1071,12 +1321,13 @@ const changes = {
 };
 
 document.addEventListener('click', (event) => {
+  if (suppressClick) return;
   const el = event.target.closest('[data-action]');
   if (!el) {
     if (!event.target.closest('#menu')) closeMenu();
     return;
   }
-  const opensMenu = ['configMenu', 'presetMenu', 'fxMenu', 'fxPresetMenu', 'fxSidechainMenu'].includes(el.dataset.action);
+  const opensMenu = ['configMenu', 'presetMenu', 'fxMenu', 'fxPresetMenu', 'fxSidechainMenu', 'midiDeviceMenu', 'midiChannelMenu', 'routeMenu'].includes(el.dataset.action);
   if (!opensMenu) closeMenu();
   actions[el.dataset.action](el, event);
 });
@@ -1133,6 +1384,95 @@ function handleAddKeys(event) {
 
 dialog.addEventListener('close', () => { session.add = null; });
 
+/* Effect dragging */
+
+const DRAG_START = 5;
+let drag = null;
+
+function dropAt(x, y) {
+  const under = document.elementFromPoint(x, y);
+  const node = under?.closest('.fx');
+  if (node && node.dataset.fx !== drag.fx.id) {
+    const toStrip = stripOf(node.dataset.strip);
+    const row = toStrip.chain.find((item) => item.some((fx) => fx.id === node.dataset.fx));
+    const hasRoom = row.length < MAX_PARALLEL || row.includes(drag.fx);
+    const rect = node.getBoundingClientRect();
+    const across = (x - rect.left) / rect.width;
+    const stage = node.closest('.stage').getBoundingClientRect();
+    const beside = across < 0.3 || across > 0.7 || !hasRoom;
+    if (beside) {
+      const where = across < 0.5 ? 'before' : 'after';
+      return { toStrip, targetId: node.dataset.fx, where, mark: { left: where === 'before' ? stage.left - 4 : stage.right + 2, top: stage.top, width: 2, height: stage.height } };
+    }
+    const where = y < rect.top + rect.height / 2 ? 'above' : 'below';
+    return { toStrip, targetId: node.dataset.fx, where, mark: { left: rect.left, top: where === 'above' ? rect.top - 4 : rect.bottom + 2, width: rect.width, height: 2 } };
+  }
+  const area = under?.closest('[data-effects]');
+  if (!area || node) return null;
+  const toStrip = stripOf(area.dataset.effects);
+  const plus = area.querySelector('.add-fx').getBoundingClientRect();
+  return { toStrip, targetId: null, where: 'end', mark: { left: plus.left - 3, top: plus.top, width: 2, height: plus.height } };
+}
+
+function paintDrop(target) {
+  const mark = document.getElementById('drop-mark');
+  mark.hidden = !target;
+  if (target) Object.entries(target.mark).forEach(([key, value]) => { mark.style[key] = `${value}px`; });
+}
+
+app.addEventListener('pointerdown', (event) => {
+  const handle = event.target.closest('.fx-open');
+  if (!handle || event.button !== 0) return;
+  const strip = stripOf(handle.dataset.strip);
+  drag = { strip, fx: findFx(strip, handle.dataset.fx), node: handle.closest('.fx'), x: event.clientX, y: event.clientY, ghost: null, target: null };
+});
+
+document.addEventListener('pointermove', (event) => {
+  if (!drag) return;
+  if (!drag.ghost) {
+    if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < DRAG_START) return;
+    closeMenu();
+    drag.ghost = drag.node.cloneNode(true);
+    drag.ghost.classList.add('fx-ghost');
+    drag.ghost.style.width = `${drag.node.offsetWidth}px`;
+    document.body.append(drag.ghost);
+    drag.node.classList.add('dragging');
+    document.body.classList.add('is-dragging');
+  }
+  drag.ghost.style.left = `${event.clientX + 8}px`;
+  drag.ghost.style.top = `${event.clientY + 8}px`;
+  drag.target = dropAt(event.clientX, event.clientY);
+  paintDrop(drag.target);
+});
+
+document.addEventListener('pointerup', () => {
+  if (!drag) return;
+  const { ghost, target, strip, fx } = drag;
+  const wasDragged = Boolean(ghost);
+  drag = null;
+  if (!wasDragged) return;
+  ghost.remove();
+  paintDrop(null);
+  document.body.classList.remove('is-dragging');
+  suppressClick = true;
+  setTimeout(() => { suppressClick = false; }, 0);
+  if (target) {
+    moveFx(strip, fx, target.toStrip, target.targetId, target.where);
+    touch();
+  } else {
+    render();
+  }
+});
+
+let suppressClick = false;
+
+/* Keeps the unfolding Add effect button in view in a chain that scrolls. */
+app.addEventListener('transitionend', (event) => {
+  if (!event.target.matches?.('.add-fx:hover, .add-fx:focus-visible')) return;
+  const chain = event.target.closest('.chain');
+  chain.scrollLeft = chain.scrollWidth;
+});
+
 /* Plugin window dragging */
 
 windowLayer.addEventListener('pointerdown', (event) => {
@@ -1161,6 +1501,12 @@ windowLayer.addEventListener('pointerdown', (event) => {
 
 const levels = new Map();
 
+function paintActivity() {
+  app.querySelectorAll('[data-activity="true"]').forEach((led) => {
+    led.classList.toggle('off', Math.random() > 0.3);
+  });
+}
+
 function paintMeters(step) {
   app.querySelectorAll('.meter').forEach((meter) => {
     const key = meter.dataset.meter;
@@ -1177,6 +1523,7 @@ function paintMeters(step) {
 
 function animateMeters() {
   paintMeters(0.14);
+  paintActivity();
   if (!reducedMotion) setTimeout(animateMeters, 90);
 }
 
