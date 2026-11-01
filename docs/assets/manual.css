@@ -31,8 +31,10 @@ dl.controls dt { color: var(--ink); font-weight: 600; margin-top: 1rem; }
 dl.controls dd { margin: .2rem 0 0; }
 .n {
   display: inline-block; min-width: 1.35rem; height: 1.35rem; margin-right: .5rem; border-radius: 999px;
-  background: var(--led); color: var(--led-ink); font: 700 .72rem/1.35rem ui-monospace, monospace; text-align: center;
+  background: var(--amber); color: var(--amber-ink); font: 700 .72rem/1.35rem ui-monospace, monospace; text-align: center;
 }
+/* A value as a seven-segment display shows it. */
+.seg { padding: .05em .4em; border-radius: 3px; background: var(--black); color: var(--amber); font: 500 .85em ui-monospace, "SF Mono", Menlo, monospace; white-space: pre; }
 
 /* ---------- Marked screenshots ----------
    A figure shows a region of a screenshot (--zx/--zy/--zw/--zh, percent of
@@ -59,14 +61,14 @@ dl.controls dd { margin: .2rem 0 0; }
   top: calc((var(--y) - var(--zy)) * 100% / var(--zh));
   width: calc(var(--w) * 100% / var(--zw));
   height: calc(var(--h) * 100% / var(--zh));
-  border: 2px solid var(--led);
+  border: 2px solid var(--amber);
   border-radius: 6px;
   pointer-events: none;
 }
 .mark b {
   position: absolute; top: -.75rem; left: -.75rem;
   min-width: 1.4rem; height: 1.4rem; padding: 0 .3rem; border-radius: 999px;
-  background: var(--led); color: var(--led-ink);
+  background: var(--amber); color: var(--amber-ink);
   font: 700 .74rem/1.4rem ui-monospace, monospace; text-align: center;
 }
 /* A menu or a dialog, shown whole at about its size in the app. */
@@ -74,11 +76,11 @@ dl.controls dd { margin: .2rem 0 0; }
 .fig.small img, .fig.medium img { display: block; border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,.25), 0 0 0 1px var(--line); }
 .fig.small img { width: 20rem; }
 .fig.medium img { width: 30rem; }
-/* One tall channel beside the list of its parts. */
-.side { display: grid; grid-template-columns: 14rem minmax(0, 1fr); gap: 2.5rem; align-items: start; max-width: 52rem; }
-.side .fig { margin: .5rem 0 0; }
-.side dl { margin: 0; }
-.side dl dt:first-child { margin-top: 0; }
+/* Menus that belong together, side by side. */
+.figs { display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: flex-start; margin: 1.5rem 0 1.75rem; }
+.figs .fig { margin: 0; }
+.figs .fig.small img { width: 14rem; }
+.figs .fig.small.wide img { width: 21rem; }
 table.faults { width: 100%; max-width: 52rem; margin: 1.25rem 0; border-collapse: collapse; font-size: .95rem; }
 table.faults th { color: var(--ink); text-align: left; font-weight: 600; }
 table.faults th, table.faults td { padding: .55rem .75rem .55rem 0; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -87,8 +89,4 @@ table.faults th, table.faults td { padding: .55rem .75rem .55rem 0; border-botto
 @media (max-width: 1000px) {
   .layout { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
   .toc { position: static; max-height: none; border: 1px solid var(--line); border-radius: 8px; padding: 1rem; }
-}
-@media (max-width: 640px) {
-  .side { grid-template-columns: minmax(0, 1fr); }
-  .side .fig { max-width: 14rem; }
 }

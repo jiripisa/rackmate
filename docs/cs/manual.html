@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pluginarium – manuál</title>
-<meta name="description" content="Manuál aplikace Pluginarium: všechny ovládací prvky s označenými snímky obrazovky.">
-<link rel="alternate" hreflang="en" href="https://jiripisa.github.io/pluginarium/manual.html">
-<link rel="alternate" hreflang="cs" href="https://jiripisa.github.io/pluginarium/cs/manual.html">
-<link rel="alternate" hreflang="x-default" href="https://jiripisa.github.io/pluginarium/manual.html">
+<title>Rackmate – manuál</title>
+<meta name="description" content="Manuál aplikace Rackmate: všechny ovládací prvky s označenými snímky obrazovky.">
+<link rel="alternate" hreflang="en" href="https://jiripisa.github.io/rackmate/manual.html">
+<link rel="alternate" hreflang="cs" href="https://jiripisa.github.io/rackmate/cs/manual.html">
+<link rel="alternate" hreflang="x-default" href="https://jiripisa.github.io/rackmate/manual.html">
 <link rel="icon" href="../assets/icon.png">
 <link rel="stylesheet" href="../assets/site.css">
 <link rel="stylesheet" href="../assets/manual.css">
@@ -15,7 +15,7 @@
 <body>
 
 <header class="wrap masthead">
-  <a class="brand" href="index.html"><img src="../assets/icon.png" alt="" width="32" height="32">Pluginarium</a>
+  <a class="brand" href="index.html"><img class="logo" src="../assets/logo-dark.png" alt="Rackmate" width="600" height="421"></a>
   <nav aria-label="Web">
     <a href="index.html">Přehled</a>
     <a href="manual.html" aria-current="page">Manuál</a>
@@ -27,7 +27,7 @@
 <main>
   <div class="wrap title">
     <h1>Manuál</h1>
-    <p>Každý ovládací prvek aplikace Pluginarium 0.1.0: kde ho najdete a co dělá.
+    <p>Každý ovládací prvek aplikace Rackmate 0.2.0: kde ho najdete a co dělá.
     Rámečky ve snímcích označují prvek, o kterém text mluví. Popisky ovládacích prvků
     jsou anglicky, přesně jak je ukazuje aplikace.</p>
   </div>
@@ -38,13 +38,14 @@
       <ol>
         <li><a href="#start">Začínáme</a></li>
         <li><a href="#start-screen">Úvodní obrazovka</a></li>
-        <li><a href="#mixer">Mixér</a>
+        <li><a href="#rack">Rack</a>
           <ol>
             <li><a href="#topbar">Horní lišta</a></li>
           </ol>
         </li>
         <li><a href="#channel">Kanál</a>
           <ol>
+            <li><a href="#displays">Displeje</a></li>
             <li><a href="#midi-in">MIDI in</a></li>
             <li><a href="#audio-in">Audio in</a></li>
             <li><a href="#sidechain-in">Sidechain in</a></li>
@@ -54,13 +55,24 @@
           </ol>
         </li>
         <li><a href="#presets">Presety</a></li>
-        <li><a href="#effects">Efekty</a></li>
+        <li><a href="#effects">Efekty</a>
+          <ol>
+            <li><a href="#effect-switch">Zapnutí a vypnutí</a></li>
+            <li><a href="#effect-plus">Add effect</a></li>
+            <li><a href="#effect-menu">Menu za třemi tečkami</a></li>
+            <li><a href="#dragging">Přetahování</a></li>
+          </ol>
+        </li>
         <li><a href="#add">Dialog pro přidání</a>
           <ol>
             <li><a href="#standalone">Samostatné efekty</a></li>
           </ol>
         </li>
-        <li><a href="#saving">Ukládání</a></li>
+        <li><a href="#saving">Ukládání</a>
+          <ol>
+            <li><a href="#files">Kde jsou racky uložené</a></li>
+          </ol>
+        </li>
         <li><a href="#settings">Nastavení</a>
           <ol>
             <li><a href="#device">Zvukové zařízení</a></li>
@@ -80,113 +92,118 @@
 
       <section id="start">
         <h2>Začínáme</h2>
-        <p>Pluginarium hostuje Audio Units, takže Mac může v dawless studiu fungovat jako další
+        <p>Rackmate hostuje Audio Units, takže Mac může v dawless studiu fungovat jako další
         nástroj a DAW přitom vůbec nespouštíte. Potřebuje macOS 15 nebo novější na Apple silicon.
         Umí jen Audio Units a hraje na pluginy, které už na Macu máte.</p>
         <ol>
           <li>Stáhněte obraz disku ze <a href="index.html#get">stránky ke stažení</a>
           a otevřete ho.</li>
-          <li>Přetáhněte <b>Pluginarium</b> do složky <b>Aplikace</b> a spusťte ho odtamtud.
+          <li>Přetáhněte <b>Rackmate</b> do složky <b>Aplikace</b> a spusťte ho odtamtud.
           Otevře se <a href="#start-screen">úvodní obrazovka</a>.</li>
-          <li>Zvolte <span class="ui caps">New configuration</span>. Pokud má vaše zvukové
+          <li>Zvolte <span class="ui caps">New rack</span>. Pokud má vaše zvukové
           zařízení vstupy, macOS se jednou zeptá na mikrofon; odpovězte mu. Víc v kapitole
           <a href="#microphone">Přístup k mikrofonu</a>.</li>
           <li><a href="#add">Dialog pro přidání</a> je otevřený a vyhledávání je připravené.
           Napište pár písmen z názvu pluginu a stiskněte <kbd>Return</kbd>. Plugin se objeví jako
-          kanál 1 v <a href="#mixer">mixéru</a>.</li>
-          <li>Na kanálu vyberte MIDI zařízení v části
-          <a href="#midi-in"><span class="ui caps">MIDI in</span></a> a zkontrolujte
-          <a href="#audio-out"><span class="ui caps">Audio out</span></a>. Na zařízení se čtyřmi
-          a více výstupy začíná první nástroj na <span class="ui">Out 3–4</span>, ne na
-          <span class="ui">Out 1–2</span>.</li>
-          <li>Stiskněte <kbd>⌘S</kbd> a konfiguraci pojmenujte. Příště ji najdete na úvodní
+          kanál 1 v <a href="#rack">racku</a>.</li>
+          <li>Na kanálu klikněte na <span class="ui">No MIDI</span> pod
+          <a href="#midi-in"><span class="ui caps">MIDI in</span></a> a vyberte své MIDI zařízení.
+          Pak zkontrolujte displej <a href="#audio-out"><span class="ui caps">Audio out</span></a>.
+          Na zařízení se čtyřmi a více výstupy začíná první nástroj na
+          <span class="seg">3-4</span>, ne na <span class="seg">1-2</span>.</li>
+          <li>Stiskněte <kbd>⌘S</kbd> a rack pojmenujte. Příště ho najdete na úvodní
           obrazovce.</li>
         </ol>
+        <p>Pokud jste Rackmate používali pod starým názvem Pluginarium, vaše racky, presety
+        a nastavení se při prvním spuštění přenesou. Víc v kapitole
+        <a href="#files">Kde jsou racky uložené</a>.</p>
       </section>
 
       <section id="start-screen">
         <h2>Úvodní obrazovka</h2>
-        <p>Aplikace se vždycky otevře tady. Na zvukové zařízení nesáhne, dokud neotevřete
-        konfiguraci.</p>
+        <p>Aplikace se vždycky otevře tady, na logu Rackmate a seznamu vašich racků. Na zvukové
+        zařízení nesáhne, dokud nějaký rack neotevřete.</p>
         <figure class="fig">
-          <div class="view" style="--iw:2560;--ih:1520;--zx:5;--zy:30;--zw:90;--zh:39">
-            <img src="../assets/manual/start.png" alt="Úvodní obrazovka: vlevo nápis Pluginarium a kontrolka Ready, vpravo tři uložené konfigurace a tlačítka New configuration a Settings.">
-            <span class="mark" style="--x:8.9;--y:56.8;--w:5.7;--h:3.5"><b>1</b></span>
-            <span class="mark" style="--x:53;--y:34;--w:37.7;--h:26.5"><b>2</b></span>
-            <span class="mark" style="--x:53;--y:62.4;--w:12.2;--h:3.6"><b>3</b></span>
-            <span class="mark" style="--x:65.9;--y:62.4;--w:6.7;--h:3.6"><b>4</b></span>
+          <div class="view" style="--iw:2440;--ih:720">
+            <img src="../assets/manual/start.png" alt="Úvodní obrazovka: vlevo logo Rackmate a kontrolka Ready, vpravo tři uložené racky a tlačítka New rack a Settings.">
+            <span class="mark" style="--x:10.7;--y:91.1;--w:5.6;--h:6.7"><b>1</b></span>
+            <span class="mark" style="--x:49.4;--y:18.6;--w:39.9;--h:57.4"><b>2</b></span>
+            <span class="mark" style="--x:49.3;--y:78.8;--w:8.4;--h:10.2"><b>3</b></span>
+            <span class="mark" style="--x:57.9;--y:78.8;--w:7.6;--h:10.2"><b>4</b></span>
           </div>
         </figure>
         <dl class="controls">
           <dt><span class="n">1</span><span class="ui caps">Ready</span></dt>
           <dd>Aplikace je připravená.</dd>
-          <dt><span class="n">2</span>Uložené konfigurace</dt>
-          <dd>Jeden řádek na konfiguraci, podle abecedy, pod názvem pluginy jednotlivých kanálů.
-          Kliknutím ji otevřete v mixéru. Dokud nic uloženého nemáte, seznam hlásí
-          <span class="ui">No configurations yet</span>. Když se řádky nevejdou, seznam se
-          posouvá.</dd>
-          <dt><span class="n">3</span><span class="ui caps">New configuration</span></dt>
-          <dd>Otevře prázdný mixér a přes něj <a href="#add">dialog pro přidání</a>.</dd>
+          <dt><span class="n">2</span>Uložené racky</dt>
+          <dd>Jeden řádek na rack, podle abecedy, pod názvem pluginy jednotlivých kanálů.
+          Kliknutím rack otevřete. Dokud nic uloženého nemáte, seznam hlásí
+          <span class="ui">No racks yet</span>. Když se řádky nevejdou, seznam se posouvá.</dd>
+          <dt><span class="n">3</span><span class="ui caps">New rack</span></dt>
+          <dd>Otevře prázdný rack a přes něj <a href="#add">dialog pro přidání</a>.</dd>
           <dt><span class="n">4</span><span class="ui caps">Settings</span></dt>
           <dd>Otevře <a href="#settings">nastavení</a>. Tlačítkem
           <span class="ui caps">Done</span> se vrátíte sem.</dd>
         </dl>
       </section>
 
-      <section id="mixer">
-        <h2>Mixér</h2>
-        <p>Hlavní obrazovka. Kanály stojí vedle sebe jako sloupce mixážního pultu a signál teče
-        shora dolů. Když je kanálů víc, než se vejde do okna, řada se posouvá do stran.</p>
+      <section id="rack">
+        <h2>Rack</h2>
+        <p>Hlavní obrazovka. Kanály stojí nad sebou jako jednotky ve studiovém racku a v každé
+        jednotce teče signál zleva doprava. Když je kanálů víc, než se vejde do okna, jednotky se
+        posouvají nahoru a dolů a horní lišta zůstává na místě. Pod poslední jednotkou vyplňuje
+        volnou výšku větrací panel; nic nedělá. Okno se otevírá na 1280 × 760 bodů a jde zmenšit
+        na 1200 × 600.</p>
         <figure class="fig">
           <div class="view" style="--iw:2560;--ih:1520">
-            <img src="../assets/manual/mixer.png" alt="Mixér s konfigurací Evening set: horní lišta, čtyři nástrojové kanály s efekty a sloupec pro přidání kanálu.">
-            <span class="mark" style="--x:2.5;--y:4.8;--w:95;--h:5.1"><b>1</b></span>
-            <span class="mark" style="--x:2.5;--y:10.6;--w:58.8;--h:88.8"><b>2</b></span>
-            <span class="mark" style="--x:61.4;--y:10.6;--w:8.1;--h:88.8"><b>3</b></span>
+            <img src="../assets/manual/mixer.png" alt="Rack Evening set: horní lišta, čtyři nástrojové kanály jako rackové jednotky s efekty a jednotka pro přidání kanálu.">
+            <span class="mark" style="--x:2;--y:4.4;--w:96;--h:5.2"><b>1</b></span>
+            <span class="mark" style="--x:1.5;--y:10.1;--w:97;--h:71.8"><b>2</b></span>
+            <span class="mark" style="--x:1.5;--y:82.3;--w:97;--h:10.1"><b>3</b></span>
           </div>
-          <figcaption>Konfigurace se čtyřmi nástroji.</figcaption>
+          <figcaption>Rack se čtyřmi nástroji.</figcaption>
         </figure>
         <dl class="controls">
           <dt><span class="n">1</span><a href="#topbar">Horní lišta</a></dt>
-          <dd>Konfigurace a stav jejího uložení, MIDI clock, zatížení CPU a nastavení.</dd>
+          <dd>Rack a stav jeho uložení, MIDI clock, zatížení CPU a nastavení.</dd>
           <dt><span class="n">2</span><a href="#channel">Kanály</a></dt>
-          <dd>Jeden sloupec na nástroj nebo samostatný efekt, očíslované v pořadí přidání.</dd>
+          <dd>Jedna jednotka na nástroj nebo samostatný efekt, očíslované shora.</dd>
           <dt><span class="n">3</span><span class="ui caps">Add instrument or effect</span></dt>
           <dd>Otevře <a href="#add">dialog pro přidání</a> nového kanálu.</dd>
         </dl>
-        <p>Konfigurace hraje hned, jak ji otevřete. Tlačítko pro přehrávání tu není: pluginy
+        <p>Rack hraje hned, jak ho otevřete. Tlačítko pro přehrávání tu není: pluginy
         zní, jakmile dostanou MIDI nebo audio.</p>
 
         <h3 id="topbar">Horní lišta</h3>
         <figure class="fig">
-          <div class="view" style="--iw:2560;--ih:1520;--zx:2;--zy:3.8;--zw:32;--zh:6.4">
-            <img src="../assets/manual/mixer.png" alt="Levý konec horní lišty: název konfigurace se šipkou menu a slovo Saved.">
-            <span class="mark" style="--x:2.4;--y:4.6;--w:11;--h:4.2"><b>1</b></span>
-            <span class="mark" style="--x:14;--y:5.2;--w:3.2;--h:3.4"><b>2</b></span>
+          <div class="view" style="--iw:2560;--ih:1520;--zx:1.5;--zy:3.8;--zw:32;--zh:6.4">
+            <img src="../assets/manual/mixer.png" alt="Levý konec horní lišty: nápis Rackmate, název racku se šipkou menu a slovo Saved.">
+            <span class="mark" style="--x:13.1;--y:4.8;--w:10.1;--h:3.7"><b>1</b></span>
+            <span class="mark" style="--x:23.6;--y:5.2;--w:3.3;--h:3"><b>2</b></span>
           </div>
         </figure>
         <figure class="fig">
-          <div class="view" style="--iw:2558;--ih:160">
-            <img src="../assets/manual/topbar-unsaved.png" alt="Horní lišta po změně: vedle názvu konfigurace Unsaved changes a tlačítko Save.">
+          <div class="view" style="--iw:2480;--ih:92">
+            <img src="../assets/manual/topbar-unsaved.png" alt="Horní lišta po změně: vedle názvu racku Unsaved changes a tlačítko Save.">
           </div>
           <figcaption>Po změně.</figcaption>
         </figure>
         <figure class="fig">
           <div class="view" style="--iw:2560;--ih:1520;--zx:76;--zy:3.8;--zw:23;--zh:6.4">
-            <img src="../assets/manual/mixer.png" alt="Pravý konec horní lišty: No MIDI clock se zhasnutou kontrolkou, zatížení CPU a tlačítko Settings.">
-            <span class="mark" style="--x:78.1;--y:5.3;--w:7.4;--h:3.4"><b>3</b></span>
-            <span class="mark" style="--x:86;--y:5.3;--w:4.1;--h:3.4"><b>4</b></span>
-            <span class="mark" style="--x:90.9;--y:5.2;--w:6.7;--h:3.6"><b>5</b></span>
+            <img src="../assets/manual/mixer.png" alt="Pravý konec horní lišty: No MIDI clock se zhasnutou kontrolkou, zatížení CPU a klávesa s ozubeným kolem pro nastavení.">
+            <span class="mark" style="--x:80.6;--y:5.2;--w:7.8;--h:3"><b>3</b></span>
+            <span class="mark" style="--x:88.8;--y:5.2;--w:4.3;--h:3"><b>4</b></span>
+            <span class="mark" style="--x:95;--y:4.6;--w:2.7;--h:4.2"><b>5</b></span>
           </div>
         </figure>
         <dl class="controls">
-          <dt><span class="n">1</span>Název konfigurace <span class="ui">▾</span></dt>
-          <dd>Otevře menu konfigurací, popsané níž. Konfigurace, která ještě nemá jméno, se
-          jmenuje <span class="ui caps">New configuration</span>.</dd>
+          <dt><span class="n">1</span>Název racku <span class="ui">▾</span></dt>
+          <dd>Otevře menu racků, popsané níž. Rack, který ještě nemá jméno, se
+          jmenuje <span class="ui caps">New rack</span>.</dd>
           <dt><span class="n">2</span>Stav uložení</dt>
           <dd><span class="ui">Saved</span> nebo <span class="ui">Unsaved changes</span>, a pokud
           je co ukládat, i tlačítko <span class="ui caps">Save</span>. Víc v kapitole
-          <a href="#saving">Ukládání</a>. Nová konfigurace bez kanálů tu neukazuje nic.</dd>
+          <a href="#saving">Ukládání</a>. Nový rack bez kanálů tu neukazuje nic.</dd>
           <dt><span class="n">3</span>MIDI clock</dt>
           <dd><span class="ui">No MIDI clock</span> se zhasnutou kontrolkou, nebo zdroj a jeho
           tempo, třeba <span class="ui">Hapax clock, 120.0 BPM</span>, a kontrolka bliká do
@@ -194,9 +211,10 @@
           <dt><span class="n">4</span>Zatížení CPU</dt>
           <dd>Kolik z času určeného pro audio aplikace spotřebuje, třeba
           <span class="ui">CPU 17 %</span>.</dd>
-          <dt><span class="n">5</span><span class="ui caps">Settings</span></dt>
-          <dd>Otevře <a href="#settings">nastavení</a>. Tlačítkem <span class="ui caps">Done</span>
-          se vrátíte do mixéru a konfigurace mezitím hraje dál.</dd>
+          <dt><span class="n">5</span>Ozubené kolo</dt>
+          <dd>Klávesa s tooltipem <span class="ui">Settings</span>. Otevře
+          <a href="#settings">nastavení</a>. Tlačítkem <span class="ui caps">Done</span>
+          se vrátíte do racku a ten mezitím hraje dál.</dd>
         </dl>
         <p>Hlášení o zvuku se objevují ve stejné liště, vlevo od MIDI clocku:
         <span class="ui">Audio device missing</span>, <span class="ui">Audio could not start</span>,
@@ -204,132 +222,179 @@
         <span class="ui">Microphone access denied, inputs are silent</span>. Víc v kapitole
         <a href="#faults">Poruchy</a>.</p>
 
-        <h4>Menu konfigurací</h4>
+        <h4>Menu racků</h4>
         <figure class="fig small">
-          <img src="../assets/manual/menu-configuration.png" alt="Menu konfigurací: Load configuration se třemi názvy, aktuální jantarově, pod tím New configuration a Save as.">
+          <img src="../assets/manual/menu-rack.png" alt="Menu racků: Load rack se třemi názvy, aktuální jantarově, pod tím New rack a Save as.">
         </figure>
         <dl class="controls">
-          <dt><span class="ui">Load configuration</span></dt>
-          <dd>Vaše konfigurace podle abecedy, aktuální je jantarová. Výběr nahradí to, co právě
+          <dt><span class="ui">Load rack</span></dt>
+          <dd>Vaše racky podle abecedy, aktuální je jantarový. Výběr nahradí to, co právě
           hraje. Na neuložené změny se aplikace nejdřív <a href="#saving">zeptá</a>.</dd>
-          <dt><span class="ui">New configuration</span></dt>
-          <dd>Založí prázdnou konfiguraci a otevře <a href="#add">dialog pro přidání</a>.</dd>
+          <dt><span class="ui">New rack</span></dt>
+          <dd>Založí prázdný rack a otevře <a href="#add">dialog pro přidání</a>.</dd>
           <dt><span class="ui">Save as</span></dt>
           <dd>Uloží kopii pod novým názvem, který začíná starým názvem se slovem
-          <span class="ui">copy</span>. Dál pracujete v kopii a původní konfigurace zůstává tak,
-          jak byla uložená.</dd>
+          <span class="ui">copy</span>. Dál pracujete v kopii a původní rack zůstává tak,
+          jak byl uložený.</dd>
         </dl>
       </section>
 
       <section id="channel">
         <h2>Kanál</h2>
-        <p>V kanálu je jeden nástrojový plugin nebo jeden samostatný efekt. Kanál ukazuje jen to,
-        co jeho plugin umí použít, takže běžný syntezátor nemá žádná pole pro audio vstupy. Kanál
-        samostatného efektu má trochu jiný odstín panelu.</p>
-        <div class="side">
-          <figure class="fig">
-            <div class="view" style="--iw:2560;--ih:1520;--zx:2.5;--zy:10.6;--zw:14.7;--zh:88.8">
-              <img src="../assets/manual/mixer.png" alt="Jeden kanál shora dolů: číslo a tlačítko odebrání, MIDI in, název pluginu, výběr presetu, Open plugin, Follow Start/Stop, efekty, měřič úrovně a Audio out.">
-              <span class="mark" style="--x:2.8;--y:11.9;--w:14;--h:2.9"><b>1</b></span>
-              <span class="mark" style="--x:2.8;--y:16;--w:14;--h:6.1"><b>2</b></span>
-              <span class="mark" style="--x:2.8;--y:22.7;--w:14;--h:3.8"><b>3</b></span>
-              <span class="mark" style="--x:2.8;--y:27.7;--w:14;--h:3"><b>4</b></span>
-              <span class="mark" style="--x:2.8;--y:31.4;--w:14;--h:3.4"><b>5</b></span>
-              <span class="mark" style="--x:2.8;--y:35;--w:14;--h:3.3"><b>6</b></span>
-              <span class="mark" style="--x:2.8;--y:39.6;--w:14;--h:9.8"><b>7</b></span>
-              <span class="mark" style="--x:2.8;--y:89.2;--w:14;--h:2.4"><b>8</b></span>
-              <span class="mark" style="--x:2.8;--y:92.7;--w:14;--h:5.9"><b>9</b></span>
-            </div>
+        <p>Kanál je jedna jednotka v racku a je v něm jeden nástrojový plugin nebo jeden samostatný
+        efekt. Roste podle toho, co obsahuje, a ukazuje jen to, co jeho plugin umí použít, takže
+        běžný syntezátor nemá žádné displeje pro audio vstupy. Kanál samostatného efektu má
+        trochu jiný odstín panelu.</p>
+        <figure class="fig">
+          <div class="view" style="--iw:2560;--ih:1520;--zx:3.5;--zy:10.2;--zw:35;--zh:17.6">
+            <img src="../assets/manual/mixer.png" alt="Levá část kanálu: číslo, tlačítko odebrání a kontrolka, displej MIDI in a zařízení, obrázek a název pluginu, displej presetu a dvě klávesy s ikonou.">
+            <span class="mark" style="--x:4.5;--y:11.6;--w:2.4;--h:6.1"><b>1</b></span>
+            <span class="mark" style="--x:4.9;--y:24.6;--w:1.4;--h:2.4"><b>2</b></span>
+            <span class="mark" style="--x:8.5;--y:12.2;--w:6.6;--h:7.1"><b>3</b></span>
+            <span class="mark" style="--x:8.5;--y:20.5;--w:7.7;--h:2.8"><b>4</b></span>
+            <span class="mark" style="--x:16.6;--y:13.8;--w:11.4;--h:5.5"><b>5</b></span>
+            <span class="mark" style="--x:16.6;--y:19.5;--w:16.9;--h:5"><b>6</b></span>
+            <span class="mark" style="--x:34;--y:13.9;--w:3.1;--h:5.3"><b>7</b></span>
+            <span class="mark" style="--x:34;--y:19.3;--w:3.1;--h:5.3"><b>8</b></span>
+          </div>
+        </figure>
+        <figure class="fig">
+          <div class="view" style="--iw:2560;--ih:1520;--zx:37.5;--zy:10.2;--zw:60;--zh:17.6">
+            <img src="../assets/manual/mixer.png" alt="Pravá část kanálu: oblast efektů, displej Audio out a dva měřiče úrovně.">
+            <span class="mark" style="--x:38.1;--y:14.2;--w:44.7;--h:12.1"><b>9</b></span>
+            <span class="mark" style="--x:88.5;--y:13.6;--w:6.6;--h:6.3"><b>10</b></span>
+            <span class="mark" style="--x:83.9;--y:20.3;--w:11.2;--h:4.2"><b>11</b></span>
+          </div>
+        </figure>
+        <dl class="controls">
+          <dt><span class="n">1</span>Číslo a <span class="ui">×</span></dt>
+          <dd>Místo kanálu v racku a tlačítko, které ho odebere. Aplikace se nejdřív zeptá
+          <span class="ui caps">Remove channel?</span></dd>
+          <dt><span class="n">2</span>Kontrolka aktivity</dt>
+          <dd>U nástroje blikne zeleně, když přichází MIDI, u samostatného efektu, když přichází
+          audio. Tooltip řekne, který případ to je: <span class="ui">Lights when MIDI comes in</span>,
+          nebo <span class="ui">Lights when audio comes in</span>.</dd>
+          <dt><span class="n">3</span>Displej <a href="#midi-in"><span class="ui caps">MIDI in</span></a></dt>
+          <dd>MIDI kanál, který plugin poslouchá. U pluginů, které je mají, se v tomto sloupci
+          objeví i displeje <a href="#audio-in"><span class="ui caps">Audio in</span></a> a
+          <a href="#sidechain-in"><span class="ui caps">Sidechain in</span></a>.</dd>
+          <dt><span class="n">4</span>MIDI zařízení</dt>
+          <dd>Odkud plugin dostává noty. Kliknutím otevřete menu zařízení.</dd>
+          <dt><span class="n">5</span>Obrázek a název pluginu</dt>
+          <dd>Klávesy u nástroje, vlna u samostatného efektu, pady u pluginu označeného jako
+          sampler. Dlouhý název se zmenší, a když to nestačí, zkrátí se. Celý ho ukáže tooltip.</dd>
+          <dt><span class="n">6</span>Displej presetu</dt>
+          <dd>Aktuální zvuk, jantarově. Kliknutím otevřete <a href="#presets">menu presetů</a>.</dd>
+          <dt><span class="n">7</span>Klávesa <a href="#open-plugin">Open plugin</a></dt>
+          <dd>Otevře vlastní okno pluginu.</dd>
+          <dt><span class="n">8</span>Klávesa <a href="#follow">Follow Start/Stop</a></dt>
+          <dd>Jestli se plugin rozjíždí a zastavuje s MIDI clockem.</dd>
+          <dt><span class="n">9</span><a href="#effects"><span class="ui caps">Effects</span></a></dt>
+          <dd>Efekty za pluginem, zleva doprava.</dd>
+          <dt><span class="n">10</span>Displej <a href="#audio-out"><span class="ui caps">Audio out</span></a></dt>
+          <dd>Výstupní kanály zvukového zařízení.</dd>
+          <dt><span class="n">11</span>Měřiče úrovně</dt>
+          <dd>Segmentové pruhy pro levou a pravou stranu v rozsahu 60 dB. Ukazují, co z kanálu
+          odchází. Jsou zelené, od 68 % pruhu žluté a od 88 % červené.</dd>
+        </dl>
+        <p>Dvě čtvercové klávesy mají obrázek a žádný text. Když na klávese podržíte ukazatel,
+        ukáže se její název. Klávesa, která je zapnutá, svítí zeleně. Jantarová patří displejům,
+        zelená tomu, co svítí, a červená <a href="#faults">poruchám</a>.</p>
+
+        <h3 id="displays">Displeje</h3>
+        <p>Každá cesta na kanálu je hodnota na displeji a kliknutím na hodnotu otevřete její menu.
+        Číslice jsou sedmisegmentové a nerozsvícené segmenty zůstávají slabě vidět, stejně jako na
+        hardwaru. Když je ukazatel nad displejem, který jde otevřít, jeho rámeček se zbarví jantarově.</p>
+        <div class="figs">
+          <figure class="fig small">
+            <img src="../assets/manual/menu-midi-channel.png" alt="Menu MIDI kanálu: All a pod ním 1 až 16 v mřížce o čtyřech sloupcích.">
+            <figcaption>MIDI kanál.</figcaption>
           </figure>
-          <dl class="controls">
-            <dt><span class="n">1</span>Číslo a <span class="ui">×</span></dt>
-            <dd>Místo kanálu v řadě a tlačítko, které ho odebere. Aplikace se nejdřív zeptá
-            <span class="ui caps">Remove channel?</span></dd>
-            <dt><span class="n">2</span><a href="#midi-in"><span class="ui caps">MIDI in</span></a></dt>
-            <dd>Odkud plugin dostává noty. U pluginů, které je mají, se tu objeví i
-            <a href="#audio-in"><span class="ui caps">Audio in</span></a> a
-            <a href="#sidechain-in"><span class="ui caps">Sidechain in</span></a>.</dd>
-            <dt><span class="n">3</span>Název pluginu</dt>
-            <dd>Dlouhý název se zmenší, a když to nestačí, zkrátí se. Celý ho ukáže tooltip.</dd>
-            <dt><span class="n">4</span>Výběr presetu</dt>
-            <dd>Aktuální zvuk. Kliknutím otevřete <a href="#presets">menu presetů</a>.</dd>
-            <dt><span class="n">5</span><a href="#open-plugin"><span class="ui caps">Open plugin</span></a></dt>
-            <dd>Otevře vlastní okno pluginu.</dd>
-            <dt><span class="n">6</span><a href="#follow"><span class="ui caps">Follow Start/Stop</span></a></dt>
-            <dd>Jestli se plugin rozjíždí a zastavuje s MIDI clockem.</dd>
-            <dt><span class="n">7</span><a href="#effects"><span class="ui caps">Effects</span></a></dt>
-            <dd>Efekty za pluginem. V nízkém okně se tahle část posouvá.</dd>
-            <dt><span class="n">8</span>Měřič úrovně</dt>
-            <dd>Dva pruhy pro levou a pravou stranu v rozsahu 60 dB. Ukazují, co z kanálu
-            odchází.</dd>
-            <dt><span class="n">9</span><a href="#audio-out"><span class="ui caps">Audio out</span></a></dt>
-            <dd>Výstupní kanály zvukového zařízení.</dd>
-          </dl>
+          <figure class="fig small">
+            <img src="../assets/manual/menu-midi-device.png" alt="Menu MIDI zařízení: No MIDI a zdroj, který zmizel, uvedený jako Hapax (not connected).">
+            <figcaption>MIDI zařízení.</figcaption>
+          </figure>
+          <figure class="fig small">
+            <img src="../assets/manual/menu-audio-out.png" alt="Menu Audio out: stereo páry a mono kanály čtyřvýstupového zařízení ve dvou sloupcích.">
+            <figcaption>Audio out.</figcaption>
+          </figure>
         </div>
+        <p>V těchto menu je aktuální hodnota jantarová. Kliknutí kamkoli jinam menu zavře.</p>
 
         <h3 id="midi-in">MIDI in</h3>
-        <p>Mají ho pluginy, které berou MIDI. Levý výběr nabízí <span class="ui">No MIDI</span>
-        a MIDI zdroje, jak je hlásí macOS, pod jejich systémovými názvy, včetně virtuálních portů.
-        Pravý vybírá MIDI kanál: <span class="ui">All</span> nebo 1 až 16. Dokud je zařízení
-        <span class="ui">No MIDI</span>, je zašedlý.</p>
+        <p>Mají ho pluginy, které berou MIDI. Displej ukazuje <span class="seg">  1</span> až
+        <span class="seg"> 16</span>, nebo <span class="seg">ALL</span> pro všechny kanály. Bez
+        zařízení ukazuje zašedlé <span class="seg">---</span> a neotevírá se. Kliknutím vyberete
+        <span class="ui">All</span> nebo kanál 1 až 16.</p>
+        <p>Pod displejem je malým písmem zařízení. Kliknutím vyberete
+        <span class="ui">No MIDI</span> nebo některý z MIDI zdrojů, jak je hlásí macOS, pod jejich
+        systémovými názvy, včetně virtuálních portů. Nové zařízení si nechá filtr kanálu a kanál,
+        který žádné zařízení neměl, začíná na <span class="ui">All</span>.</p>
         <p>Zdroj, který zmizel, zůstává v seznamu jako <span class="ui">Hapax (not connected)</span>
-        a na kanálu svítí červeně <span class="ui">Hapax is not connected</span>. Zařízení za MIDI
-        routerem může v seznamu zůstat i vypnuté, protože macOS dál hlásí port routeru.</p>
+        a místo zařízení svítí červeně <span class="ui">Hapax is not connected</span>. Zařízení za
+        MIDI routerem může v seznamu zůstat i vypnuté, protože macOS dál hlásí port routeru.</p>
 
         <h3 id="audio-in">Audio in</h3>
-        <p>Má ho plugin s hlavním audio vstupem, třeba vokodér, a vždycky samostatný efekt. Nabízí
-        každý vstup zvukového zařízení jako mono kanál, třeba <span class="ui">In 1</span>, a pak
-        stereo páry, třeba <span class="ui">In 1–2</span>.</p>
+        <p>Má ho plugin s hlavním audio vstupem, třeba vokodér, a vždycky samostatný efekt. Displej
+        ukazuje stereo pár, třeba <span class="seg">3-4</span> nebo <span class="seg">11-12</span>,
+        mono kanál, třeba <span class="seg">3</span>, nebo zašedlé <span class="seg">OFF</span>.
+        Menu nabízí ve dvou sloupcích každý vstup zvukového zařízení jako mono kanál, třeba
+        <span class="ui">In 1</span>, a pak stereo páry, třeba <span class="ui">In 1–2</span>.</p>
         <p>U nástroje začíná na <span class="ui">Off</span>, aby se do syntezátoru se vstupem
         nedostal signál omylem, a vokodér je bez mikrofonu, dokud mu ho nevyberete. Samostatný
         efekt <span class="ui">Off</span> nemá, protože jiný zdroj nemá. Plugin, který bere
         modulátor přes sidechain, ukáže místo toho <span class="ui caps">Sidechain in</span>.</p>
 
         <h3 id="sidechain-in">Sidechain in</h3>
-        <p>Má ho plugin se sidechainovým vstupem. Nabízí stejné vstupy jako
-        <span class="ui caps">Audio in</span> a na začátku <span class="ui">Off</span>. Zdrojem je
-        vždycky vstup zvukového zařízení, nikdy jiný kanál. Efekt v řetězci si sidechain nastaví
-        ve svém <a href="#effect-menu">menu slotu</a>.</p>
+        <p>Má ho plugin se sidechainovým vstupem. Funguje jako
+        <span class="ui caps">Audio in</span> a nabízí stejné vstupy, na začátku
+        <span class="ui">Off</span>. Zdrojem je vždycky vstup zvukového zařízení, nikdy jiný kanál.
+        Efekt v řetězci si sidechain nastaví ve svém
+        <a href="#effect-menu">menu za třemi tečkami</a>.</p>
 
         <h3 id="audio-out">Audio out</h3>
-        <p>Nabízí stereo páry zvukového zařízení, třeba <span class="ui">Out 3–4</span>, a pak
+        <p>Displej ukazuje cestu stejným způsobem, třeba <span class="seg">3-4</span>. Menu nabízí ve
+        dvou sloupcích stereo páry zvukového zařízení, třeba <span class="ui">Out 3–4</span>, a pak
         jednotlivé mono kanály, třeba <span class="ui">Out 3</span>. Víc kanálů může sdílet jeden
-        výstup, jejich signály se sečtou. Cesta, kterou zařízení nemá, zůstává v seznamu a kanál to
-        červeně hlásí: <span class="ui">Out 5–6 is not available on this device</span>.</p>
+        výstup, jejich signály se sečtou. Cesta, kterou zařízení nemá, zůstává v seznamu, displej
+        svítí červeně a kanál to pod ním hlásí:
+        <span class="ui">Out 5–6 is not available on this device</span>.</p>
 
         <h3 id="open-plugin">Open plugin</h3>
-        <p><span class="ui caps">Open plugin</span> otevře vlastní okno pluginu nad mixérem
-        a rozsvítí se kontrolka. Tlačítko se pak jmenuje <span class="ui caps">Close plugin</span>;
-        červené tlačítko okna udělá totéž. Každý plugin má nejvýš jedno okno, velké tak, jak si
-        plugin řekne.</p>
+        <p>První klávesa otevře vlastní okno pluginu nad rackem a rozsvítí se zeleně. Její tooltip
+        se změní z <span class="ui">Open plugin</span> na <span class="ui">Close plugin</span>
+        a dalším stiskem okno zavřete; červené tlačítko okna udělá totéž. Každý plugin má nejvýš
+        jedno okno, velké tak, jak si plugin řekne. Klávesa je zašedlá, dokud plugin nejde otevřít,
+        například když se ještě načítá nebo chybí.</p>
         <figure class="fig medium">
-          <img src="../assets/manual/plugin-window.png" alt="Okno AUDelay od Applu otevřené z Pluginaria.">
+          <img src="../assets/manual/plugin-window.png" alt="Okno AUDelay od Applu otevřené z Rackmate.">
           <figcaption>AUDelay od Applu ve vlastním okně.</figcaption>
         </figure>
         <p>Okna pluginů ustoupí dialogům a nastavení a pak se vrátí tam, kde byla. Plugin bez
         vlastního vzhledu dostane malé okno s textem <span class="ui">This plugin has no
-        window</span>. Efekt otevírá své okno ze <a href="#effect-menu">menu slotu</a>.</p>
+        window</span>. Efekt otevírá své okno kliknutím na svůj název.</p>
 
         <h3 id="follow">Follow Start/Stop</h3>
-        <p>Přepínač určuje, co plugin uvidí z transportu MIDI clocku. Když na něm podržíte ukazatel,
-        ukáže se tooltip. Tempo dostane každý plugin tak jako tak.</p>
+        <p>Druhá klávesa určuje, co plugin uvidí z transportu MIDI clocku. Její tooltip ukazuje
+        <span class="ui">Follow Start/Stop: On</span>, nebo <span class="ui">Off</span>. Tempo
+        dostane každý plugin tak jako tak.</p>
         <dl class="controls">
-          <dt>Kontrolka svítí, zapnuto</dt>
+          <dt>Klávesa svítí, zapnuto</dt>
           <dd>Plugin vidí tempo i transport, takže arpeggiator nebo vnitřní sekvencer běží
           s vaším sekvencerem.</dd>
-          <dt>Kontrolka nesvítí, vypnuto</dt>
+          <dt>Klávesa nesvítí, vypnuto</dt>
           <dd>Plugin vidí jen tempo a transport pro něj pořád stojí. Delay drží tempo a vnitřní
           sekvencer se nerozjede.</dd>
         </dl>
-        <p>U nástrojů je přepínač na začátku vypnutý, aby se sekvencer nerozjel s partem, o který
-        jste nestáli. U efektů, samostatných i v řetězci, je zapnutý. Ukládá se do konfigurace.
-        Noty a kontrolery jdou podle <span class="ui caps">MIDI in</span> bez ohledu na přepínač.</p>
+        <p>U nástrojů je klávesa na začátku vypnutá, aby se sekvencer nerozjel s partem, o který
+        jste nestáli. U efektů, samostatných i v řetězci, je zapnutá. Ukládá se do racku.
+        Noty a kontrolery jdou podle <span class="ui caps">MIDI in</span> bez ohledu na klávesu.</p>
       </section>
 
       <section id="presets">
         <h2>Presety</h2>
-        <p>Preset je pojmenovaný otisk zvuku pluginu. Patří k pluginu, takže ho máte v každé
-        konfiguraci, která ten plugin používá. Výběr presetu na kanálu ukazuje aktuální zvuk:</p>
+        <p>Preset je pojmenovaný otisk zvuku pluginu. Patří k pluginu, takže ho máte v každém
+        racku, který ten plugin používá. Displej presetu na kanálu ukazuje aktuální zvuk:</p>
         <dl class="controls">
           <dt><span class="ui">Default sound</span></dt>
           <dd>Plugin tak, jak se načte, nedotčený. Vybrat ho jde jen při přidání pluginu.</dd>
@@ -341,16 +406,18 @@
           <dd>Zvuk jste změnili potom, co jste vybrali svůj preset. Tovární presety tuhle značku
           nikdy nedostanou.</dd>
         </dl>
-        <p>Pluginy o změně zvuku nedají vědět. Pluginarium proto porovná stav pluginu při otevření
+        <p>Pluginy o změně zvuku nedají vědět. Rackmate proto porovná stav pluginu při otevření
         a zavření jeho okna, takže se změna projeví, když okno zavřete nebo uložíte.</p>
-        <figure class="fig small">
-          <img src="../assets/manual/menu-preset.png" alt="Menu presetů AUMatrixReverb: My presets a Factory presets se seznamem místností a sálů od Applu.">
-          <figcaption>Plugin, který své tovární presety nabízí.</figcaption>
-        </figure>
-        <figure class="fig small">
-          <img src="../assets/manual/menu-preset-empty.png" alt="Menu presetů TB-303: My presets s jedním presetem, věta o továrních zvucích a Save as preset.">
-          <figcaption>Plugin, který je nenabízí.</figcaption>
-        </figure>
+        <div class="figs">
+          <figure class="fig small">
+            <img src="../assets/manual/menu-preset.png" alt="Menu presetů AUMatrixReverb: My presets a Factory presets se seznamem místností a sálů od Applu.">
+            <figcaption>Plugin, který své tovární presety nabízí.</figcaption>
+          </figure>
+          <figure class="fig small wide">
+            <img src="../assets/manual/menu-preset-empty.png" alt="Menu presetů TB-303: My presets s jedním presetem, věta o továrních zvucích a Save as preset.">
+            <figcaption>Plugin, který je nenabízí.</figcaption>
+          </figure>
+        </div>
         <dl class="controls">
           <dt><span class="ui">My presets</span></dt>
           <dd>Presety, které jste pro tento plugin uložili, nebo <span class="ui">None saved
@@ -367,75 +434,152 @@
         <span class="ui">This plugin keeps its factory sounds in its own window. Open it, choose a
         sound and save it here.</span> Stačí to udělat jednou a zvuk je od té chvíle váš preset.</p>
         <h3>Co se stane s uloženým presetem</h3>
-        <p>Preset je uložený natrvalo v tu chvíli, kdy ho uložíte, i když pak u konfigurace zvolíte
-        <span class="ui caps">Don't save</span>. Na konfiguraci čeká jen to, že ho používá. Víc
-        v kapitole <a href="#saving">Ukládání</a>. Konfigurace drží úplný stav každého pluginu,
-        takže pozdější změna presetu dřív uloženou konfiguraci nezmění.</p>
+        <p>Preset je uložený natrvalo v tu chvíli, kdy ho uložíte, i když pak u racku zvolíte
+        <span class="ui caps">Don't save</span>. Na rack čeká jen to, že ho používá. Víc
+        v kapitole <a href="#saving">Ukládání</a>. Rack drží úplný stav každého pluginu,
+        takže pozdější změna presetu dřív uložený rack nezmění.</p>
       </section>
 
       <section id="effects">
         <h2>Efekty</h2>
         <p>Efekty v řetězci kanálu zpracovávají plugin toho kanálu. Signál dostávají z řetězce,
-        takže jediný vstup, který můžou mít, je sidechain.</p>
+        takže jediný vstup, který můžou mít, je sidechain. Řetězec běží zleva doprava, a když se
+        nevejde, posouvá se do strany.</p>
         <figure class="fig">
-          <div class="view" style="--iw:2560;--ih:1520;--zx:16.5;--zy:39;--zw:30;--zh:16">
-            <img src="../assets/manual/mixer.png" alt="Dva řetězce efektů: AUDelay a AUMatrixReverb vedle sebe spojené čarami a tytéž dva efekty pod sebou.">
-            <span class="mark" style="--x:17.9;--y:42.4;--w:13.2;--h:5.1"><b>1</b></span>
-            <span class="mark" style="--x:32.7;--y:42.4;--w:13;--h:7"><b>2</b></span>
-            <span class="mark" style="--x:32.7;--y:49.8;--w:13;--h:3.3"><b>3</b></span>
+          <div class="view" style="--iw:2560;--ih:1520;--zx:37.8;--zy:28;--zw:45.4;--zh:35">
+            <img src="../assets/manual/mixer.png" alt="Dva řetězce efektů: AUDelay a AUMatrixReverb nad sebou mezi závorkami a tytéž dva efekty za sebou spojené šipkou.">
+            <span class="mark" style="--x:38.8;--y:32.2;--w:22.2;--h:12.1"><b>1</b></span>
+            <span class="mark" style="--x:38.7;--y:53.3;--w:39.4;--h:6.1"><b>2</b></span>
+            <span class="mark" style="--x:79.3;--y:53.6;--w:3.1;--h:5.3"><b>3</b></span>
           </div>
         </figure>
         <dl class="controls">
           <dt><span class="n">1</span>Paralelně</dt>
-          <dd>Efekty vedle sebe v jedné řadě běží paralelně, spojené čarami rozdělení a sloučení.
-          V řadě můžou být až tři. Větve se sčítají ve stejné úrovni; poměr nastavíte ovladači wet
-          a dry v jednotlivých pluginech.</dd>
+          <dd>Efekty nad sebou v jednom stupni běží paralelně, spojené závorkami. Ve stupni můžou
+          být až tři. Větve se sčítají ve stejné úrovni; poměr nastavíte ovladači wet a dry
+          v jednotlivých pluginech.</dd>
           <dt><span class="n">2</span>Sériově</dt>
-          <dd>Řady běží shora dolů a každá krmí tu další.</dd>
-          <dt><span class="n">3</span><span class="ui">Add effect</span></dt>
-          <dd>Otevře <a href="#add">dialog pro přidání</a> a efekt dá do nové řady na konec
-          řetězce.</dd>
+          <dd>Stupně běží zleva doprava, spojené šipkami, a každý krmí ten další.</dd>
+          <dt><span class="n">3</span>Plus</dt>
+          <dd>Přidá efekt. Víc v části <a href="#effect-plus">Add effect</a>.</dd>
         </dl>
-        <h3 id="effect-menu">Menu slotu</h3>
-        <p>Kliknutím na efekt otevřete jeho menu. Efekt, který se nenačetl, má název červeně
-        a důvod je v tooltipu; plugin kanálu hraje dál.</p>
+        <figure class="fig">
+          <div class="view" style="--iw:2560;--ih:1520;--zx:38.5;--zy:16.5;--zw:20.5;--zh:7.5">
+            <img src="../assets/manual/mixer.png" alt="Jeden slot efektu: malý obrázek, název AUDelay, zelená kontrolka a tři tečky.">
+            <span class="mark" style="--x:39.5;--y:18.6;--w:1.7;--h:2.9"><b>1</b></span>
+            <span class="mark" style="--x:41.2;--y:18.6;--w:4.4;--h:2.9"><b>2</b></span>
+            <span class="mark" style="--x:53.7;--y:18.4;--w:2;--h:3.4"><b>3</b></span>
+            <span class="mark" style="--x:55.8;--y:18.2;--w:1.7;--h:3.9"><b>4</b></span>
+          </div>
+        </figure>
+        <dl class="controls">
+          <dt><span class="n">1</span>Obrázek</dt>
+          <dd>Ve slotu užším než 150 bodů se skryje.</dd>
+          <dt><span class="n">2</span>Název</dt>
+          <dd>Jantarově. Kliknutím otevřete nebo zavřete vlastní okno efektu. Dokud je okno
+          otevřené, název je bílý. Tažením za název <a href="#dragging">efekt přesunete</a>.</dd>
+          <dt><span class="n">3</span>Kontrolka</dt>
+          <dd><a href="#effect-switch">Vypínač efektu</a>. Zelená znamená zapnuto.</dd>
+          <dt><span class="n">4</span>Tři tečky</dt>
+          <dd>Otevřou <a href="#effect-menu">menu za třemi tečkami</a>. Tooltip je
+          <span class="ui">Menu</span>.</dd>
+        </dl>
+
+        <h3 id="effect-switch">Zapnutí a vypnutí</h3>
+        <p>Kliknutím na kontrolku efekt vypnete nebo zapnete. Totéž udělá
+        <span class="ui">Turn effect off</span> nebo <span class="ui">Turn effect on</span> v jeho
+        menu. Stav se ukládá s rackem a změna rack označí jako neuložený. Vypnutý efekt má
+        zhasnutou kontrolku a šedý název.</p>
+        <figure class="fig medium">
+          <img src="../assets/manual/effects-off.png" alt="Dva řetězce s vypnutým AUDelay, jednou samotným a jednou v paralelním stupni vedle AUMatrixReverb, který zůstává zapnutý. Plus prvního řetězce je rozbalené do tlačítka Add effect s rámečkem fokusu.">
+          <figcaption>Vypnutý AUDelay, samotný a v paralelním stupni. Plus horního řetězce je rozbalené.</figcaption>
+        </figure>
+        <p>Vypnutý efekt zůstává načtený a drží si okno, presety i stav. Z cesty signálu ale
+        vypadne:</p>
+        <ul>
+          <li>V sérii jím signál projde beze změny.</li>
+          <li>V paralelním stupni vypadne ze součtu, takže úroveň neskočí.</li>
+          <li>Když jsou vypnuté všechny efekty stupně, stupeň pustí signál dál suchý.</li>
+        </ul>
+        <p>Vypnutí efektu utne jeho dozvuk a to, co zůstalo v jeho bufferech, se může ozvat, až ho
+        zase zapnete.</p>
+
+        <h3 id="effect-plus">Add effect</h3>
+        <p>Kulaté plus na konci řetězce se rozbalí do tlačítka s nápisem
+        <span class="ui caps">Add effect</span>, když je nad ním ukazatel nebo má fokus klávesnice,
+        a pak se zase složí. Se zapnutou volbou Omezit pohyb v macOS se změní bez animace. Otevře
+        <a href="#add">dialog pro přidání</a> a efekt dá do nového stupně na konec řetězce.</p>
+
+        <h3 id="effect-menu">Menu za třemi tečkami</h3>
         <figure class="fig small">
-          <img src="../assets/manual/menu-effect.png" alt="Menu slotu efektu: Open plugin, Presets, Follow Start/Stop, Add parallel effect, Move to series a Remove.">
+          <img src="../assets/manual/menu-effect.png" alt="Menu efektu v paralelním stupni: Open plugin, Turn effect off, Presets, Follow Start/Stop, Add parallel effect, Move to series a Remove.">
         </figure>
         <dl class="controls">
           <dt><span class="ui">Open plugin</span> / <span class="ui">Close plugin</span></dt>
-          <dd>Vlastní okno efektu.</dd>
+          <dd>Vlastní okno efektu, stejně jako kliknutí na název.</dd>
+          <dt><span class="ui">Turn effect off</span> / <span class="ui">Turn effect on</span></dt>
+          <dd>Totéž co kliknutí na kontrolku.</dd>
           <dt><span class="ui">Presets: Default sound</span></dt>
           <dd>Ukáže aktuální zvuk a otevře <a href="#presets">menu presetů</a>.</dd>
           <dt><span class="ui">Sidechain in: Off</span></dt>
-          <dd>Jen u pluginu se sidechainem. Vyberte vstup zvukového zařízení. Pod řadou se pak
+          <dd>Jen u pluginu se sidechainem. Vyberte vstup zvukového zařízení. Ve slotu se pak
           objeví třeba <span class="ui">Sidechain from In 1</span>.</dd>
           <dt><span class="ui">Follow Start/Stop: On</span></dt>
           <dd>Přepne <a href="#follow">Follow Start/Stop</a> pro tento efekt.</dd>
           <dt><span class="ui">Add parallel effect</span></dt>
-          <dd>Otevře dialog pro přidání a efekt dá vedle tohoto. Když jsou v řadě tři, položka
-          zmizí.</dd>
+          <dd>Otevře dialog pro přidání a efekt dá do tohoto stupně. Když jsou ve stupni tři,
+          položka zmizí.</dd>
           <dt><span class="ui">Move to series</span></dt>
-          <dd>Jen v paralelní řadě. Přesune efekt do nové řady hned pod ní.</dd>
+          <dd>Jen v paralelním stupni. Přesune efekt do nového stupně hned za tímto.</dd>
           <dt><span class="ui">Remove</span></dt>
           <dd>Odebere efekt hned, bez ptaní.</dd>
         </dl>
+
+        <h3 id="dragging">Přetahování</h3>
+        <p>Efekt přesunete tažením za jeho název. Tažení začne po 5 bodech. Efekt na svém místě
+        ztmavne, za ukazatelem jde jeho kopie a jantarová čára ukazuje, kam dopadne.</p>
+        <figure class="fig">
+          <div class="view" style="--iw:1280;--ih:560">
+            <img src="../assets/manual/drag-series.png" alt="AUDelay tažený z jednoho kanálu k levému okraji AUMatrixReverb v jiném: před tímto efektem stojí svislá jantarová čára.">
+          </div>
+          <figcaption>Na vnější části slotu: nový stupeň v sérii. Čára stojí svisle.</figcaption>
+        </figure>
+        <figure class="fig">
+          <div class="view" style="--iw:1280;--ih:560">
+            <img src="../assets/manual/drag-parallel.png" alt="AUDelay tažený doprostřed AUMatrixReverb: pod tímto efektem leží vodorovná jantarová čára.">
+          </div>
+          <figcaption>Uprostřed slotu: stejný stupeň, paralelně. Čára leží vodorovně.</figcaption>
+        </figure>
+        <dl class="controls">
+          <dt>Vnějších 30 % šířky slotu</dt>
+          <dd>Nový stupeň v sérii před stupněm tohoto slotu, nebo za ním.</dd>
+          <dt>Prostředek slotu</dt>
+          <dd>Paralelně, do stupně tohoto slotu: z horní poloviny nad slot, z dolní pod něj.
+          Stupeň se třemi efekty nabízí jen strany.</dd>
+          <dt>Kdekoli jinde v oblasti efektů kanálu</dt>
+          <dd>Konec řetězce tohoto kanálu, i když je řetězec prázdný.</dd>
+          <dt>Na samotném efektu, nebo mimo oblasti efektů</dt>
+          <dd>Nic se nezmění.</dd>
+        </dl>
+        <p>Tažení může skončit v jiném kanálu. Plugin se znovu nenačítá a drží si zvuk, jeho
+        otevřené okno se nejdřív zavře. Přesun označí rack jako neuložený. Efekt, který se
+        nenačetl, přetáhnout nejde.</p>
       </section>
 
       <section id="add">
         <h2>Dialog pro přidání</h2>
-        <p>Tentýž dialog přidává kanál, přidává efekt a nahrazuje chybějící plugin. Nová
-        konfigurace ho otevře hned a vyhledávání je připravené, takže stačí pár písmen
+        <p>Tentýž dialog přidává kanál, přidává efekt a nahrazuje chybějící plugin. Nový
+        rack ho otevře hned a vyhledávání je připravené, takže stačí pár písmen
         a <kbd>Return</kbd>.</p>
         <figure class="fig">
-          <div class="view" style="--iw:1280;--ih:1022">
-            <img src="../assets/manual/add-instrument.png" alt="Dialog Add to stack: záložky Instrument a Standalone effect, vyhledávání, seznam pluginů, sloupec Sound, pole zapojení a tlačítka Cancel a Add.">
-            <span class="mark" style="--x:1.4;--y:10.8;--w:38.4;--h:5.3"><b>1</b></span>
-            <span class="mark" style="--x:2.6;--y:17.5;--w:94.8;--h:5.4"><b>2</b></span>
-            <span class="mark" style="--x:1.4;--y:24.6;--w:47.8;--h:51.2"><b>3</b></span>
-            <span class="mark" style="--x:49.8;--y:24.6;--w:47.6;--h:51.2"><b>4</b></span>
-            <span class="mark" style="--x:1.4;--y:79.6;--w:96;--h:9.1"><b>5</b></span>
-            <span class="mark" style="--x:76.4;--y:91;--w:21;--h:6"><b>6</b></span>
+          <div class="view" style="--iw:1280;--ih:1030">
+            <img src="../assets/manual/add-instrument.png" alt="Dialog Add to rack: záložky Instrument a Standalone effect, vyhledávání, seznam pluginů, sloupec Sound, pole zapojení a tlačítka Cancel a Add.">
+            <span class="mark" style="--x:2.3;--y:10.2;--w:38;--h:6.2"><b>1</b></span>
+            <span class="mark" style="--x:2.5;--y:17;--w:95;--h:6.2"><b>2</b></span>
+            <span class="mark" style="--x:2.5;--y:24;--w:47.7;--h:51.5"><b>3</b></span>
+            <span class="mark" style="--x:51.1;--y:24;--w:46.4;--h:51.5"><b>4</b></span>
+            <span class="mark" style="--x:2.5;--y:78.3;--w:95;--h:10.8"><b>5</b></span>
+            <span class="mark" style="--x:74.8;--y:89.8;--w:22.7;--h:7.4"><b>6</b></span>
           </div>
         </figure>
         <dl class="controls">
@@ -479,18 +623,18 @@
         </dl>
         <h3>Tři způsoby použití</h3>
         <dl class="controls">
-          <dt><span class="ui caps">Add to stack</span></dt>
-          <dd>Nový kanál, z <span class="ui caps">Add instrument or effect</span> nebo z nové
-          konfigurace.</dd>
+          <dt><span class="ui caps">Add to rack</span></dt>
+          <dd>Nový kanál, z <span class="ui caps">Add instrument or effect</span> nebo z nového
+          racku.</dd>
           <dt><span class="ui caps">Add effect to TB-303</span></dt>
-          <dd>Efekt do řetězce, z <span class="ui">Add effect</span> nebo
-          <span class="ui">Add parallel effect</span>. Bez záložek a bez zapojení.</dd>
+          <dd>Efekt do řetězce, z plus nebo z <span class="ui">Add parallel effect</span>. Bez
+          záložek a bez zapojení.</dd>
           <dt><span class="ui caps">Replace plugin</span></dt>
           <dd>Nový plugin pro kanál, jehož plugin chybí. Kanál si nechá zapojení a efekty. Audio
           in si nechá, pokud ho nový plugin má, a stejně tak sidechain in.</dd>
         </dl>
         <figure class="fig">
-          <div class="view" style="--iw:1280;--ih:822">
+          <div class="view" style="--iw:1280;--ih:830">
             <img src="../assets/manual/add-effect.png" alt="Dialog Add effect to TB-303 s vybraným AUMatrixReverb a jeho továrními presety ve sloupci Sound.">
           </div>
           <figcaption>Přidání efektu do řetězce: bez záložek a bez zapojení.</figcaption>
@@ -502,7 +646,7 @@
         ho na záložce <span class="ui caps">Standalone effect</span>. Žádný plugin před sebou nemá
         a může mít vlastní efekty.</p>
         <figure class="fig">
-          <div class="view" style="--iw:1280;--ih:1022">
+          <div class="view" style="--iw:1280;--ih:1030">
             <img src="../assets/manual/add-standalone.png" alt="Dialog pro přidání na záložce Standalone effect s poli Audio in a Audio out.">
           </div>
         </figure>
@@ -513,11 +657,11 @@
 
       <section id="saving">
         <h2>Ukládání</h2>
-        <p>Konfigurace drží kanály, zapojení, efekty a úplný stav každého pluginu. Každá změna ji
-        označí jako <span class="ui">Unsaved changes</span> a uložíte ji tlačítkem
+        <p>Rack drží kanály, zapojení, efekty a úplný stav každého pluginu. Každá změna ho
+        označí jako <span class="ui">Unsaved changes</span> a uložíte ho tlačítkem
         <span class="ui caps">Save</span> nebo <kbd>⌘S</kbd>. <span class="ui">Save</span>
         a <span class="ui">Save as</span> jsou i v menu <b>File</b>. Změny v
-        <a href="#settings">nastavení</a> do konfigurace nepatří a ukládají se hned.</p>
+        <a href="#settings">nastavení</a> do racku nepatří a ukládají se hned.</p>
         <p>Dokud je otevřené okno pluginu, ukazuje horní lišta <span class="ui caps">Save</span>
         i vedle <span class="ui">Saved</span>, protože v okně může být změna, o které aplikace
         ještě neví. Uložení se pak nejdřív podívá do otevřených oken, a když se žádný zvuk
@@ -529,13 +673,13 @@
         </figure>
         <dl class="controls">
           <dt><span class="ui caps">Save changes?</span></dt>
-          <dd>Přijde, když s neuloženými změnami načítáte jinou konfiguraci, zakládáte novou nebo
+          <dd>Přijde, když s neuloženými změnami načítáte jiný rack, zakládáte nový nebo
           končíte. <span class="ui caps">Save</span> uloží a pokračuje,
           <span class="ui caps">Don't save</span> pokračuje a změny zahodí,
           <span class="ui caps">Cancel</span> zůstane, kde jste. <kbd>Return</kbd> znamená Save,
           <kbd>Esc</kbd> znamená Cancel.</dd>
-          <dt><span class="ui caps">Save configuration</span></dt>
-          <dd>Přijde při prvním uložení nové konfigurace a ptá se na název. Prázdný název potvrdit
+          <dt><span class="ui caps">Save rack</span></dt>
+          <dd>Přijde při prvním uložení nového racku a ptá se na název. Prázdný název potvrdit
           nejde.</dd>
           <dt><span class="ui caps">Save as</span></dt>
           <dd>Ptá se na název kopie.</dd>
@@ -544,41 +688,57 @@
           <img src="../assets/manual/dialog-save-preset.png" alt="Dialog Save preset s polem pro název a tlačítky Cancel a Save preset.">
         </figure>
         <figure class="fig medium">
-          <img src="../assets/manual/dialog-update-configuration.png" alt="Dialog Update configuration? s tlačítky Not now a Save configuration.">
+          <img src="../assets/manual/dialog-update-rack.png" alt="Dialog Update rack? s tlačítky Not now a Save rack.">
         </figure>
         <dl class="controls">
           <dt><span class="ui caps">Save preset</span></dt>
-          <dd>Ptá se na název presetu.</dd>
-          <dt><span class="ui caps">Update configuration?</span></dt>
-          <dd>Přijde po uložení presetu v konfiguraci, která už uložená je.
-          <span class="ui caps">Save configuration</span> uloží i konfiguraci,
-          <span class="ui caps">Not now</span> ji nechá neuloženou. Preset je uložený tak jako tak.</dd>
+          <dd>Ptá se na název presetu. Název je označený, takže ho psaním přepíšete.</dd>
+          <dt><span class="ui caps">Update rack?</span></dt>
+          <dd>Přijde po uložení presetu v racku, který už uložený je.
+          <span class="ui caps">Save rack</span> uloží i rack,
+          <span class="ui caps">Not now</span> ho nechá neuložený. Preset je uložený tak jako tak.</dd>
           <dt><span class="ui caps">Remove channel?</span></dt>
           <dd>Přijde z tlačítka <span class="ui">×</span> na kanálu.
           <span class="ui caps">Remove</span> odebere kanál i s efekty a počítá se to jako každá
           jiná změna.</dd>
         </dl>
-        <p>V konfiguraci, která ještě nikdy uložená nebyla, po uložení presetu žádná otázka
-        nepřijde. Řádek dole řekne <span class="ui">Acid bass saved. It joins this configuration
-        when you save it.</span></p>
+        <p>V racku, který ještě nikdy uložený nebyl, po uložení presetu žádná otázka nepřijde. Řádek
+        dole řekne, že je preset uložený, a dodá <span class="ui">It joins this rack when you save
+        it.</span></p>
         <p>Když aplikace nedokáže přečíst zvuk z pluginu, nechá jeho naposledy uložený stav a řádek
         dole to oznámí: <span class="ui">TB-303 could not be read, its last saved sound was kept</span>.</p>
+
+        <h3 id="files">Kde jsou racky uložené</h3>
+        <p>Všechno je ve složce <code>~/Library/Application Support/Rackmate</code>:</p>
+        <dl class="controls">
+          <dt><code>configurations</code></dt>
+          <dd>Racky, každý v jednom souboru.</dd>
+          <dt><code>presets</code></dt>
+          <dd>Vaše presety, po pluginech.</dd>
+          <dt><code>settings.json</code></dt>
+          <dd>To, co nastavíte v <a href="#settings">nastavení</a>.</dd>
+        </dl>
+        <p>Rackmate se dřív jmenoval Pluginarium. Když při spuštění složka Rackmate neexistuje
+        a <code>~/Library/Application Support/Pluginarium</code> ano, stará složka se zkopíruje do
+        nové. Stane se to jednou. Stará složka se nikdy nepřesouvá, nemění ani nemaže a to, co
+        v Rackmate uložíte, jde jen do nové. Když se kopírování nepovede, rozdělaná složka se
+        odstraní a aplikace začne s prázdným seznamem.</p>
       </section>
 
       <section id="settings">
         <h2>Nastavení</h2>
-        <p>Otevřete je z úvodní obrazovky, z horní lišty nebo klávesami <kbd>⌘,</kbd>. Tlačítkem
-        <span class="ui caps">Done</span> se vrátíte. Nastavení patří aplikaci, ne konfiguraci,
-        a každá změna se ukládá hned.</p>
+        <p>Otevřete je z úvodní obrazovky, ozubeným kolem v horní liště nebo klávesami
+        <kbd>⌘,</kbd>. Tlačítkem <span class="ui caps">Done</span> se vrátíte. Nastavení patří
+        aplikaci, ne racku, a každá změna se ukládá hned. Stránka se posouvá.</p>
         <figure class="fig">
-          <div class="view" style="--iw:2560;--ih:1520">
+          <div class="view" style="--iw:1720;--ih:1458">
             <img src="../assets/manual/settings.png" alt="Nastavení: sekce Audio se System default a sample rate a buffer size jen ke čtení, sekce MIDI clock a tabulka Instrument positions.">
-            <span class="mark" style="--x:1.9;--y:20.4;--w:19.8;--h:5.9"><b>1</b></span>
-            <span class="mark" style="--x:22.6;--y:20.4;--w:19.2;--h:5.9"><b>2</b></span>
-            <span class="mark" style="--x:42.7;--y:20.4;--w:19.2;--h:5.9"><b>3</b></span>
-            <span class="mark" style="--x:1.9;--y:26.9;--w:21.6;--h:2.4"><b>4</b></span>
-            <span class="mark" style="--x:1.9;--y:39.9;--w:60;--h:5.8"><b>5</b></span>
-            <span class="mark" style="--x:1.9;--y:48.6;--w:60;--h:42.1"><b>6</b></span>
+            <span class="mark" style="--x:5.2;--y:17;--w:30.7;--h:6.9"><b>1</b></span>
+            <span class="mark" style="--x:36.4;--y:17;--w:29.3;--h:6.9"><b>2</b></span>
+            <span class="mark" style="--x:66.4;--y:17;--w:29.4;--h:6.9"><b>3</b></span>
+            <span class="mark" style="--x:5.2;--y:24;--w:35.5;--h:3"><b>4</b></span>
+            <span class="mark" style="--x:5.2;--y:37.6;--w:90.6;--h:6.9"><b>5</b></span>
+            <span class="mark" style="--x:5.2;--y:46.6;--w:90.6;--h:44.7"><b>6</b></span>
           </div>
         </figure>
         <dl class="controls">
@@ -620,13 +780,13 @@
         seznam sleduje, co hlásí macOS.</p>
 
         <h3 id="positions">Tabulky pozic</h3>
-        <p>Nový kanál si vezme zapojení podle své pozice v řadě: první nástroj dostane řádek 1
+        <p>Nový kanál si vezme zapojení podle své pozice v racku: první nástroj dostane řádek 1
         tabulky <span class="ui caps">Instrument positions</span>, druhý řádek 2 a tak dál.
         Samostatné efekty se počítají zvlášť v tabulce <span class="ui caps">Effect positions</span>.
         Tabulky si jednou nastavíte podle studia a kterýkoli kanál pak můžete změnit. Změna tabulky
         existující kanály neovlivní.</p>
         <figure class="fig">
-          <div class="view" style="--iw:1588;--ih:1060">
+          <div class="view" style="--iw:1720;--ih:1128">
             <img src="../assets/manual/settings-positions.png" alt="Nastavení posunuté dolů: tabulka Instrument positions se sedmi řádky a Effect positions se třemi.">
           </div>
         </figure>
@@ -671,71 +831,85 @@
           <dt><kbd>⇧⌘S</kbd></dt>
           <dd><span class="ui">Save as</span>, v menu <b>File</b>.</dd>
           <dt><kbd>⌘,</kbd></dt>
-          <dd><span class="ui">Settings…</span>, v menu <b>Pluginarium</b>.</dd>
+          <dd><span class="ui">Settings…</span>, v menu <b>Rackmate</b>.</dd>
           <dt><kbd>Return</kbd> a <kbd>Esc</kbd> v dialogu</dt>
           <dd>Return znamená vyplněné tlačítko, Esc zruší.</dd>
           <dt>V otevřeném menu</dt>
-          <dd><kbd>↓</kbd> <kbd>↑</kbd> posouvají, <kbd>Return</kbd> nebo <kbd>Space</kbd> vybere,
-          <kbd>Esc</kbd> zavře. Menu zavře i kliknutí jinam v mixéru.</dd>
+          <dd><kbd>↓</kbd> <kbd>↑</kbd> posouvají, v mřížce i <kbd>←</kbd> <kbd>→</kbd>.
+          <kbd>Return</kbd> nebo <kbd>Space</kbd> vybere, <kbd>Esc</kbd> zavře. Menu zavře i kliknutí
+          jinam v racku.</dd>
+          <dt><kbd>Tab</kbd></dt>
+          <dd>Se zapnutou Navigací na klávesnici v nastavení klávesnice v macOS přechází Tab mezi
+          ovládacími prvky a prvek s fokusem má jantarový rámeček.</dd>
         </dl>
-        <p><span class="ui">New configuration</span> je v menu <b>File</b>, bez zkratky. Dokud je na
+        <p><span class="ui">New rack</span> je v menu <b>File</b>, bez zkratky. Dokud je na
         obrazovce dialog nebo nastavení, tyto příkazy nefungují. Klávesy dialogu pro přidání jsou
         <a href="#add">popsané u něj</a>.</p>
       </section>
 
       <section id="faults">
         <h2>Poruchy</h2>
-        <p>Konfigurace se otevře vždycky. Co chybí, se ukáže tam, kam to patří, a zbytek hraje.</p>
+        <p>Rack se otevře vždycky. Co chybí, se ukáže tam, kam to patří, jako červeně svítící text,
+        a zbytek hraje.</p>
         <figure class="fig">
-          <div class="view" style="--iw:2560;--ih:1520">
-            <img src="../assets/manual/faults.png" alt="Mixér se třemi poruchami: nepřipojené MIDI zařízení, nenainstalovaný plugin s tlačítkem Replace plugin a výstup, který zařízení nemá.">
-            <span class="mark" style="--x:2.8;--y:22.1;--w:14;--h:2.4"><b>1</b></span>
-            <span class="mark" style="--x:17.8;--y:20.2;--w:13.4;--h:10.9"><b>2</b></span>
-            <span class="mark" style="--x:32.4;--y:83.9;--w:12.4;--h:4.5"><b>3</b></span>
+          <div class="view" style="--iw:2480;--ih:1004">
+            <img src="../assets/manual/faults.png" alt="Rack se čtyřmi poruchami: nepřipojené MIDI zařízení, nenainstalovaný efekt, nenainstalovaný plugin s klávesou Replace plugin a výstup, který zařízení nemá.">
+            <span class="mark" style="--x:7.2;--y:16;--w:7.9;--h:15"><b>1</b></span>
+            <span class="mark" style="--x:15.6;--y:42.2;--w:17.4;--h:16.3"><b>2</b></span>
+            <span class="mark" style="--x:84.3;--y:69.7;--w:12.6;--h:15.1"><b>3</b></span>
+            <span class="mark" style="--x:59.2;--y:19.7;--w:19.9;--h:9.8"><b>4</b></span>
           </div>
-          <figcaption>Konfigurace přenesená na Mac s jiným vybavením.</figcaption>
+          <figcaption>Rack přenesený na Mac s jiným vybavením.</figcaption>
         </figure>
         <table class="faults">
           <thead><tr><th>Co vidíte</th><th>Co to znamená</th><th>Co s tím</th></tr></thead>
           <tbody>
             <tr>
-              <td><span class="n">1</span><span class="ui">Hapax is not connected</span></td>
+              <td><span class="n">1</span><span class="ui">Hapax is not connected</span> červeně
+              na místě zařízení</td>
               <td>macOS tento MIDI zdroj už nehlásí.</td>
-              <td>Připojte ho, nebo vyberte jiný zdroj v <span class="ui caps">MIDI in</span>.
-              Když se zdroj vrátí, cesta se obnoví sama.</td>
+              <td>Připojte ho, nebo na něj klikněte a vyberte jiný zdroj. Když se zdroj vrátí,
+              cesta se obnoví sama.</td>
             </tr>
             <tr>
-              <td><span class="n">2</span><span class="ui">Plugin not installed on this Mac</span></td>
-              <td>Plugin na tomto Macu není.</td>
+              <td><span class="n">2</span>Název pluginu červeně a klávesa
+              <span class="ui caps">Replace plugin</span> na místě presetu</td>
+              <td>Plugin na tomto Macu není. Tooltip názvu říká
+              <span class="ui">Plugin not installed on this Mac</span>.</td>
               <td>Stiskněte <span class="ui caps">Replace plugin</span> a vyberte jiný, nebo ho
-              nainstalujte a konfiguraci otevřete znovu. Uložený zvuk kanálu zůstává, dokud plugin
+              nainstalujte a rack otevřete znovu. Uložený zvuk kanálu zůstává, dokud plugin
               nenahradíte.</td>
             </tr>
             <tr>
-              <td><span class="n">3</span><span class="ui">Out 5–6 is not available on this device</span></td>
-              <td>Zvukové zařízení tento výstup nemá. Stejně se hlásí i chybějící vstup.</td>
+              <td><span class="n">3</span>Červený displej <span class="ui caps">Audio out</span>
+              a <span class="ui">Out 5–6 is not available on this device</span></td>
+              <td>Zvukové zařízení tento výstup nemá. Chybějící vstup rozsvítí červeně svůj
+              displej.</td>
               <td>Vyberte na kanálu jinou cestu, nebo použijte zařízení, které ji má.</td>
             </tr>
             <tr>
-              <td><span class="ui">Plugin failed to load</span></td>
-              <td>Plugin tu je, ale nespustil se. Důvod je v tooltipu.</td>
-              <td>Otevřete konfiguraci znovu, nebo plugin vyzkoušejte v jiném hostiteli.</td>
+              <td><span class="n">4</span>Efekt s červeným rámečkem, názvem a kontrolkou</td>
+              <td>Efekt se nenačetl nebo není nainstalovaný. Tooltip řekne, který případ to je.
+              Název ani kontrolka nereagují, efekt nejde přetáhnout a jediná položka jeho menu je
+              <span class="ui">Remove</span>.</td>
+              <td>Odeberte ho v <a href="#effect-menu">menu za třemi tečkami</a> nebo ho
+              nainstalujte. Plugin kanálu hraje dál.</td>
             </tr>
             <tr>
-              <td>Název efektu červeně</td>
-              <td>Efekt se nenačetl nebo není nainstalovaný. Tooltip řekne, který případ to je.</td>
-              <td>Odeberte ho v <a href="#effect-menu">menu slotu</a> nebo ho nainstalujte. Plugin
-              kanálu hraje dál.</td>
+              <td>Název pluginu červeně a uložený zvuk zašedle na místě presetu</td>
+              <td>Plugin tu je, ale nespustil se. Tooltip názvu začíná
+              <span class="ui">Plugin failed to load</span> a uvádí důvod.</td>
+              <td>Otevřete rack znovu, nebo plugin vyzkoušejte v jiném hostiteli.</td>
             </tr>
             <tr>
-              <td><span class="ui">Loading</span></td>
+              <td><span class="ui">Loading</span> zašedle na místě presetu</td>
               <td>Plugin se ještě spouští. Některým to trvá několik vteřin.</td>
               <td>Počkejte.</td>
             </tr>
             <tr>
               <td><span class="ui">Audio device missing</span></td>
-              <td>Zařízení zmizelo. Konfigurace zůstává otevřená.</td>
-              <td>Připojte ho a konfigurace zase začne hrát. Nebo vyberte v nastavení jiné
+              <td>Zařízení zmizelo. Rack zůstává otevřený.</td>
+              <td>Připojte ho a rack zase začne hrát. Nebo vyberte v nastavení jiné
               zařízení.</td>
             </tr>
             <tr>
@@ -763,7 +937,7 @@
             </tr>
             <tr>
               <td><span class="ui">Evening set could not be saved</span></td>
-              <td>Soubor se nepodařilo zapsat. Konfigurace zůstává neuložená.</td>
+              <td>Soubor se nepodařilo zapsat. Rack zůstává neuložený.</td>
               <td>Zkontrolujte disk a uložte znovu.</td>
             </tr>
             <tr>
@@ -777,13 +951,13 @@
 
       <section id="microphone">
         <h2>Přístup k mikrofonu</h2>
-        <p>macOS bere každý audio vstup jako mikrofon. Když poprvé otevřete konfiguraci na
-        zařízení se vstupy, macOS se zeptá, jestli Pluginarium smí používat mikrofon, a uvede důvod
-        <span class="ui">Pluginarium plays audio from your interface through your plugins.</span>
+        <p>macOS bere každý audio vstup jako mikrofon. Když poprvé otevřete rack na
+        zařízení se vstupy, macOS se zeptá, jestli Rackmate smí používat mikrofon, a uvede důvod
+        <span class="ui">Rackmate plays audio from your interface through your plugins.</span>
         Stane se to, i když zatím žádný kanál vstup nepoužívá.</p>
         <p>Dokud neodpovíte, žádné zvukové zařízení není otevřené: nic nehraje a horní lišta
         ukazuje <span class="ui">Waiting for microphone access</span>. Nastavení, menu i ukončení
-        aplikace fungují dál. Odpovězte v dialogu macOS a konfigurace se rozběhne. macOS se ptá
+        aplikace fungují dál. Odpovězte v dialogu macOS a rack se rozběhne. macOS se ptá
         jen jednou.</p>
         <dl class="controls">
           <dt>Allow</dt>
@@ -794,16 +968,19 @@
           <span class="ui">Microphone access denied, inputs are silent</span>. Pluginů, které žádný
           vstup nepoužívají, se to netýká.</dd>
         </dl>
-        <p>Odpověď změníte později tak, že Pluginarium zapnete v <b>Nastavení systému › Soukromí
+        <p>Odpověď změníte později tak, že Rackmate zapnete v <b>Nastavení systému › Soukromí
         a zabezpečení › Mikrofon</b> a aplikaci spustíte znovu.</p>
       </section>
 
       <section id="updates">
         <h2>Aktualizace</h2>
-        <p>Při každém spuštění se Pluginarium zeptá, jestli existuje novější verze, a pokud ano,
+        <p>Při každém spuštění se Rackmate zeptá, jestli existuje novější verze, a pokud ano,
         nabídne ji. Bez vašeho souhlasu se nic nenainstaluje. <span class="ui">Check for
         Updates…</span> v menu aplikace se zeptá hned. Bez připojení k internetu se aplikace spustí
         jako obvykle.</p>
+        <p>Nainstalované Pluginarium 0.1.0 se na Rackmate neaktualizuje. Rackmate nainstalujte ze
+        <a href="index.html#get">stránky ke stažení</a>; vaše
+        <a href="#files">racky se přenesou</a>.</p>
       </section>
 
       <section id="limits">
@@ -814,7 +991,7 @@
           <li>Žádný MIDI learn a žádné ovládání parametrů pluginů z MIDI kontrolerů.</li>
           <li>Žádné fadery, panorama ani míchání hlasitostí. To dělá váš mixážní pult.</li>
           <li>Žádné nahrávání, sekvencování ani aranžování.</li>
-          <li>Vždycky jen jedna konfigurace. Načtení další zastaví, co hraje, takže není určené pro
+          <li>Vždycky jen jeden rack. Načtení dalšího zastaví, co hraje, takže není určené pro
           přepínání během hraní.</li>
           <li>Sidechain přichází ze vstupu zvukového zařízení, ne z jiného kanálu.</li>
           <li>Žádná kompenzace latence. Audio, které prochází Macem, přijde o jednu cestu tam
@@ -822,14 +999,15 @@
           sekvencerem. Držte buffer nízko a zbytek dorovnejte na sekvenceru.</li>
           <li>Žádný limiter. Aplikace jen ztiší neplatné vzorky a to, co z kanálu odchází, ořízne
           na +12 dB.</li>
-          <li>Kanály nejde přeuspořádat a efekty jde přesunout jen z paralelní řady.</li>
-          <li>Konfigurace a presety v aplikaci nejde přejmenovat ani smazat.
-          <span class="ui">Save as</span> dá kopii nový název. Jsou to soubory ve složce
-          <code>~/Library/Application Support/Pluginarium</code>; konfiguraci odstraníte tak, že
-          při zavřené aplikaci smažete její soubor ve složce <code>configurations</code>. Název je
-          uvnitř souboru, ne v názvu souboru.</li>
+          <li>Kanály nejde přeuspořádat.</li>
+          <li>Vypnutý efekt vypadne z cesty signálu, takže se jeho dozvuk utne.</li>
+          <li>Racky a presety v aplikaci nejde přejmenovat ani smazat.
+          <span class="ui">Save as</span> dá kopii nový název. Rack odstraníte tak, že
+          při zavřené aplikaci smažete jeho soubor ve složce
+          <a href="#files"><code>configurations</code></a>. Název je uvnitř souboru, ne v názvu
+          souboru.</li>
           <li>Aplikace se nespouští se startem Macu. Spuštění je na vás.</li>
-          <li>Tato verze se zatím používala na MacBooku se čtyřvýstupovou zvukovou kartou. Cesty
+          <li>Toto rozhraní se zatím zkoušelo na MacBooku se čtyřvýstupovou zvukovou kartou. Cesty
           přes větší zvukovou kartu, MIDI router, hardwarový zdroj clocku a skutečné sidechainové
           pluginy ještě čekají na zkoušku ve studiu.</li>
         </ul>
@@ -841,7 +1019,7 @@
 
 <footer>
   <div class="wrap">
-    <span>Pluginarium, autor Jiří Píša. GPL-3.0. Manuál pro verzi 0.1.0.</span>
+    <span>Rackmate, autor Jiří Píša. GPL-3.0. Manuál pro verzi 0.2.0.</span>
     <span><a href="index.html">Přehled</a></span>
   </div>
 </footer>

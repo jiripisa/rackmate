@@ -48,7 +48,10 @@ Your plugins as instruments in the studio.
   version strings on the pages are bumped with every release.
 - `docs/manual.html` describes every control of the app. A user-visible
   change is not done until the manual says how to use it; screenshots live
-  in `docs/assets/manual/`.
+  in `docs/assets/manual/`, and `docs/assets/rackmate-window.png` on the home
+  page is a copy of `manual/mixer.png`.
+- The site has no dark mode: the home page opens on a dark band with the white
+  logo, and everything else is a light page, which the black logo needs.
 - **The site is bilingual.** Every change to `docs/index.html` or
   `docs/manual.html` must also go into `docs/cs/` (and the other way
   round). Shared styles live in `docs/assets/`.

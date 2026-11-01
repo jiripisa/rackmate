@@ -14,10 +14,10 @@ the device. Plugins used: Roland TB-303 and JUPITER-8, Apple units, Mariana.
 
 | Spec goal | Result | Notes |
 | --- | --- | --- |
-| 1. Launch, load a saved configuration, play | Pass | Owner's walkthrough. |
-| 2. Configuration as a stack of channels | Pass | Four plugins loaded at once in the performance runs. |
-| 3. Plugin, preset, inputs and audio output per channel | Pass | Presets saved and used in a second configuration. Factory presets only where the plugin exposes them. |
-| 4. One plugin, close to zero effort | Pass | New configuration with Return only. A new channel whose default output is beyond the device takes the first free stereo pair. |
+| 1. Launch, load a saved rack, play | Pass | Owner's walkthrough. |
+| 2. Rack of channels | Pass | Four plugins loaded at once in the performance runs. |
+| 3. Plugin, preset, inputs and audio output per channel | Pass | Presets saved and used in a second rack. Factory presets only where the plugin exposes them. |
+| 4. One plugin, close to zero effort | Pass | New rack with Return only. A new channel whose default output is beyond the device takes the first free stereo pair. |
 | 5. Effects in series or parallel | Pass | Parallel effects with Apple units. |
 | 6. Plugins with audio input or sidechain | Limited | Covered by a test unit only. A real vocoder and sidechain compressor wait for the studio. |
 | 7. Tempo sync with MIDI clock | Limited | Follow Start/Stop proven on a real TB-303 both ways and during playback. Tempo from a real clock source not tried here. |
@@ -90,13 +90,13 @@ Hardware paths that no test could reach, from the ledger. Run each once:
 
 | Check | What to do | Result |
 | --- | --- | --- |
-| AUHAL with input enabled | Run a configuration with an audio input on the AudioFuse. Input signal arrives. | |
+| AUHAL with input enabled | Run a rack with an audio input on the AudioFuse. Input signal arrives. | |
 | Device writes with a picked device | After the owner's OK, pick the AudioFuse in Settings. Change sample rate and buffer size. They are applied and read back. | |
 | Rate change on a device with inputs | Change the rate while inputs are in use. Audio recovers, no crash. | |
-| Real device unplug | Unplug the interface while running, then plug it back. The configuration keeps going and returns when the device returns. | |
+| Real device unplug | Unplug the interface while running, then plug it back. The rack keeps going and returns when the device returns. | |
 | `DeviceListListener` | Plug and unplug a device. The device list in Settings updates. | |
 | Stop timeout | Quit and restart with audio running. Stop returns without hanging. | |
-| First use of the microphone question | Fakes cannot show this. Use an identity whose status is still `.notDetermined`, so a newly signed build, and run it from the app bundle with `open`: launched from a terminal, the app takes the terminal's permission. Open a configuration with the default output on a device with inputs. "Waiting for microphone access" shows in muted text, the channels stay dimmed, and Settings, menus and Quit work while the prompt is up. Allow gives inputs, Don't Allow plays without them and says so. | |
+| First use of the microphone question | Fakes cannot show this. Use an identity whose status is still `.notDetermined`, so a newly signed build, and run it from the app bundle with `open`: launched from a terminal, the app takes the terminal's permission. Open a rack with the default output on a device with inputs. "Waiting for microphone access" shows in muted text, the channels stay dimmed, and Settings, menus and Quit work while the prompt is up. Allow gives inputs, Don't Allow plays without them and says so. | |
 | Real CoreMIDI delivery through the mioXL | Play notes and clock from a real source through the mioXL. They arrive, and sources added later are connected. | |
 
 After the session, commit the results and turn any failures into new tasks with
