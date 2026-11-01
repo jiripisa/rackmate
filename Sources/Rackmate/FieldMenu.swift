@@ -183,7 +183,8 @@ struct DeviceValue: View {
         .panelFocusOutline(outset: 2)
         .onHover { isHovered = $0 }
         .panelMenuAnchor($anchor)
-        .help("MIDI device")
+        // The column cuts a long value short.
+        .help(text)
         .accessibilityLabel("MIDI device: \(text)")
     }
 
