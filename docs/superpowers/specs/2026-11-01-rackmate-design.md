@@ -12,7 +12,7 @@ This extends `2026-10-31-pluginarium-design.md`. Where the two differ, this docu
 - The owner deletes the old repository by hand. Installed copies of Pluginarium 0.1.0 do not update to Rackmate; a tester installs it from the new site.
 - The word **rack** replaces both "configuration" and "stack" everywhere a person reads it: New rack, Load rack, Save rack, Update rack?, Add to rack, No racks yet, "position in the rack", "in all racks". The type `Configuration` and the folder `configurations` keep their names, because a rename gains nothing and existing data would need migrating.
 - "Channel" stays.
-- Assets: `Resources/AppIcon.png` is the supplied icon. The supplied logo is black on transparent, so it is used on the website only. In the app the name stays set in DIN Condensed.
+- Assets, from the owner's `_images/`: the monogram icon is `Resources/AppIcon.png`. The white and amber logo goes on dark surfaces: the Start screen, in place of the set wordmark, and the website's dark hero. The black and amber lockup goes on light surfaces: the manual's header. The orange and muted variants are not used. The top bar stays set in DIN Condensed, since the logo does not read at that size.
 
 ## Look
 
@@ -80,4 +80,4 @@ No comboboxes on the mixer. Every route is a value that opens a menu.
 
 ## Website
 
-A new site in `docs/`, same structure as before in English and Czech, with the Rackmate logo and icon, and new screenshots of this interface. Everything a person reads says Rackmate and rack. `docs/superpowers/` is history and is not rewritten.
+A new site in `docs/`, same structure as before in English and Czech, with the Rackmate logo and icon, and new screenshots of this interface. The home page opens on a dark hero with the white and amber logo. The manual stays on a light page for long reading. Everything a person reads says Rackmate and rack. `docs/superpowers/` is history and is not rewritten.
