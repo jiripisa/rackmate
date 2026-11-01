@@ -50,13 +50,13 @@ extension PluginInfo: Equatable {
 public enum AddPicker {
     public static let recentLimit = 5
 
-    /// Installed plugins of `kind` whose name or vendor contains `query`: the recent ones first, in
+    /// Installed plugins offered as `kind` whose name or vendor contains `query`: the recent ones first, in
     /// recent order, then the rest. A recent plugin that is gone is skipped.
     public static func listing(of plugins: [PluginInfo], kind: PluginKind, query: String, recent: [PluginID]) -> AddListing {
         let needle = query.trimmingCharacters(in: .whitespaces).lowercased()
         // Foundation's contains is false for an empty needle.
         let matching = plugins.filter {
-            $0.kind == kind && (needle.isEmpty || "\($0.name) \($0.vendor)".lowercased().contains(needle))
+            $0.isOffered(as: kind) && (needle.isEmpty || "\($0.name) \($0.vendor)".lowercased().contains(needle))
         }
         let recentInfos = recent.compactMap { id in matching.first { $0.id == id } }
         let others = matching.filter { info in !recentInfos.contains { $0.id == info.id } }
@@ -103,10 +103,11 @@ public enum AddPicker {
         }
     }
 
-    public static func channel(plugin: PluginInfo, preset: AddPreset, routing: AddRouting, capabilities: PluginCapabilities?) -> Channel {
-        let fields = fields(kind: plugin.kind, capabilities: capabilities)
+    /// A new channel of `kind`, which is what the owner asked for: a music effect can be either.
+    public static func channel(plugin: PluginInfo, kind: PluginKind, preset: AddPreset, routing: AddRouting, capabilities: PluginCapabilities?) -> Channel {
+        let fields = fields(kind: kind, capabilities: capabilities)
         return Channel(
-            kind: plugin.kind,
+            kind: kind,
             slot: slot(plugin: plugin, preset: preset),
             midiIn: fields.midiIn ? routing.midiIn : nil,
             audioIn: fields.audioIn ? routing.audioIn : nil,

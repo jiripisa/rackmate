@@ -47,6 +47,10 @@ Faults replace boxes with lit text:
 - Output missing: the display lights red and the warning sits under it.
 - An effect that failed: red border and name, red LED, its only menu item is Remove.
 
+## Plugin types
+
+Music effects (`aumf`) take audio and MIDI. That type covers a vocoder played over MIDI and a plain effect that also takes MIDI, such as Arturia's, and nothing in it tells them apart. So the Add dialog offers them as instruments, as standalone effects and in Add effect, and what the owner picks decides the channel's kind. Their second input bus is a sidechain, as on an effect. Where `2026-10-31-pluginarium-design.md` lists them as instruments only, this section wins.
+
 ## Displays
 
 No comboboxes on the mixer. Every route is a value that opens a menu.

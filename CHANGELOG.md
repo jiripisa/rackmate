@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Effects of type `aumf`, which include Arturia's, are now in the Effects list and can go in a channel's chain. They stay in the Instruments list too, since vocoders use that type.
+- The second input of such a plugin now shows as Sidechain in.
+
 ## 1.1.0 — 2026-11-01
 
 - Delete a rack: the × on its row on the Start screen, or Delete rack in the rack menu. It goes to the Trash, and its presets stay.

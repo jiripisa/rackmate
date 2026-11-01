@@ -102,6 +102,16 @@ struct HostingTests {
         #expect(infos.first { $0.id.subtype == "PlFx" }?.kind == .effect)
     }
 
+    @Test("A music effect found by the catalog is listed under effects and instruments")
+    func catalogMusicEffectInBothLists() {
+        registerTestUnits()
+        let infos = PluginCatalog.scan()
+        for kind in [PluginKind.effect, .instrument] {
+            let listed = AddPicker.listing(of: infos, kind: kind, query: "", recent: []).all
+            #expect(listed.contains { $0.id.subtype == "PlVo" })
+        }
+    }
+
     @Test("Audio Unit tags tell a sampler from other instruments")
     func samplerTag() {
         #expect(PluginCatalog.isSampler(PluginID(type: "aumu", subtype: "samp", manufacturer: "appl")))

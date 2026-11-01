@@ -378,13 +378,13 @@ final class AppModel {
 
     /// Puts the picked plugin where `target` says, and moves it to the front of the recent ones.
     func finishAdd(
-        _ target: AddTarget, plugin: PluginInfo, preset: AddPreset, routing: AddRouting, capabilities: PluginCapabilities?
+        _ target: AddTarget, plugin: PluginInfo, kind: PluginKind, preset: AddPreset, routing: AddRouting, capabilities: PluginCapabilities?
     ) {
         let location: PluginLocation
         let settled: Task<Void, Never>?
         switch target {
         case .channel:
-            let channel = AddPicker.channel(plugin: plugin, preset: preset, routing: routing, capabilities: capabilities)
+            let channel = AddPicker.channel(plugin: plugin, kind: kind, preset: preset, routing: routing, capabilities: capabilities)
             location = PluginLocation(channel: channel.id)
             settled = edit { $0.channels.append(channel) }
         case .replace(let id):

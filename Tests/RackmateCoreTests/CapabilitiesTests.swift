@@ -17,6 +17,11 @@ struct CapabilitiesTests {
         #expect(PluginCapabilities.derive(auType: "aufx", inputBusNames: ["Main", "Aux"]) == PluginCapabilities(acceptsMIDI: false, hasAudioIn: true, hasSidechain: true))
     }
 
+    @Test("Second bus of a music effect is a sidechain whatever its name")
+    func secondMusicEffectBusIsSidechain() {
+        #expect(PluginCapabilities.derive(auType: "aumf", inputBusNames: ["Main", "Aux"]) == PluginCapabilities(acceptsMIDI: true, hasAudioIn: true, hasSidechain: true))
+    }
+
     @Test("Plugin kind maps from the AU type")
     func kindFromType() {
         #expect(PluginKind(auType: "aumu") == .instrument)

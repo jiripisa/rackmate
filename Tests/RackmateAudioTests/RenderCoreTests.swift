@@ -93,6 +93,18 @@ struct RenderCoreTests {
         expectLevel(output[1], 0.0625)
     }
 
+    @Test("A music effect in the chain processes the signal")
+    func musicEffectInTheChain() async throws {
+        let strip = StripSpec(
+            source: try await instrument(),
+            rows: [[EffectSpec(plugin: try await voice())], [EffectSpec(plugin: try await gain())]],
+            midiSlot: 0
+        )
+        let output = renderOnce(strips: [strip])
+        expectLevel(output[0], 0.125)
+        expectLevel(output[1], 0.125)
+    }
+
     @Test("Parallel branches sum equally")
     func parallelBranchesSumEqually() async throws {
         let strip = StripSpec(
