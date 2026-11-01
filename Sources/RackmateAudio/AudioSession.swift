@@ -136,7 +136,7 @@ public final class AudioSession {
         return runner?.captureState(of: held) ?? .init(configuration: held, unreadable: [])
     }
 
-    /// Takes everything down for quitting: audio first, then the plugins, then the router. The engine
+    /// Takes everything down, for quitting and when the open rack is deleted: audio first, then the plugins, then the router. The engine
     /// goes last, with this object. Nothing runs after this.
     public func close() {
         guard !isClosed else { return }
@@ -216,6 +216,7 @@ public final class AudioSession {
     }
 
     private func start(_ settings: AppSettings) {
+        guard !isClosed else { return }
         withoutFollowing {
             do {
                 try engine.start(settings: settings)

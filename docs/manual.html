@@ -69,6 +69,7 @@
         </li>
         <li><a href="#saving">Saving</a>
           <ol>
+            <li><a href="#delete">Deleting a rack</a></li>
             <li><a href="#files">Where racks are stored</a></li>
           </ol>
         </li>
@@ -123,11 +124,12 @@
         touched until you open a rack.</p>
         <figure class="fig">
           <div class="view" style="--iw:2440;--ih:720">
-            <img src="assets/manual/start.png" alt="The Start screen: the Rackmate logo and a Ready lamp on the left, three saved racks and the New rack and Settings buttons on the right.">
+            <img src="assets/manual/start.png" alt="The Start screen: the Rackmate logo and a Ready lamp on the left, three saved racks with a × on the first row, and the New rack and Settings buttons on the right.">
             <span class="mark" style="--x:10.7;--y:91.1;--w:5.6;--h:6.7"><b>1</b></span>
             <span class="mark" style="--x:49.4;--y:18.6;--w:39.9;--h:57.4"><b>2</b></span>
             <span class="mark" style="--x:49.3;--y:78.8;--w:8.4;--h:10.2"><b>3</b></span>
             <span class="mark" style="--x:57.9;--y:78.8;--w:7.6;--h:10.2"><b>4</b></span>
+            <span class="mark" style="--x:85.3;--y:22.5;--w:3.4;--h:12.5"><b>5</b></span>
           </div>
         </figure>
         <dl class="controls">
@@ -142,6 +144,10 @@
           <dt><span class="n">4</span><span class="ui caps">Settings</span></dt>
           <dd>Opens <a href="#settings">Settings</a>. <span class="ui caps">Done</span> brings
           you back here.</dd>
+          <dt><span class="n">5</span><span class="ui">×</span></dt>
+          <dd>Shows at the right of a row when the pointer is on the row or the keyboard reaches
+          it, with the tooltip <span class="ui">Delete rack</span>. See
+          <a href="#delete">Deleting a rack</a>.</dd>
         </dl>
       </section>
 
@@ -222,7 +228,7 @@
 
         <h4>Rack menu</h4>
         <figure class="fig small">
-          <img src="assets/manual/menu-rack.png" alt="The rack menu: Load rack with three names, the current one in amber, then New rack and Save as.">
+          <img src="assets/manual/menu-rack.png" alt="The rack menu: Load rack with three names, the current one in amber, then New rack, Save as and Delete rack.">
         </figure>
         <dl class="controls">
           <dt><span class="ui">Load rack</span></dt>
@@ -234,6 +240,9 @@
           <dd>Saves a copy under a new name, which starts as the old name plus
           <span class="ui">copy</span>. From then on you work in the copy, and the original
           stays as it was saved.</dd>
+          <dt><span class="ui">Delete rack</span></dt>
+          <dd>Deletes the open rack and returns to the Start screen. It is grey for a rack never
+          saved. See <a href="#delete">Deleting a rack</a>.</dd>
         </dl>
       </section>
 
@@ -702,6 +711,9 @@
         <figure class="fig medium">
           <img src="assets/manual/dialog-update-rack.png" alt="The Update rack? dialog with Not now and Save rack.">
         </figure>
+        <figure class="fig medium">
+          <img src="assets/manual/dialog-delete-rack.png" alt="The Delete rack? dialog with Cancel and Delete.">
+        </figure>
         <dl class="controls">
           <dt><span class="ui caps">Save preset</span></dt>
           <dd>Asks for the preset's name. The name is selected, so typing replaces it.</dd>
@@ -713,11 +725,28 @@
           <dd>Comes from the <span class="ui">×</span> on a channel.
           <span class="ui caps">Remove</span> takes the channel and its effects out of the
           rack, and that counts as a change like any other.</dd>
+          <dt><span class="ui caps">Delete rack?</span></dt>
+          <dd>Comes from the <span class="ui">×</span> on a row of the Start screen and from
+          <span class="ui">Delete rack</span> in the rack menu. <span class="ui caps">Delete</span>
+          moves the rack to the Trash, <span class="ui caps">Cancel</span> leaves it.
+          <kbd>Return</kbd> answers Delete and <kbd>Esc</kbd> answers Cancel. See
+          <a href="#delete">Deleting a rack</a>.</dd>
         </dl>
         <p>In a rack that was never saved, no question comes after saving a preset. A line says the
         preset is saved and adds <span class="ui">It joins this rack when you save it.</span></p>
         <p>A sound the app cannot read from a plugin keeps its last saved state, and the line says
         so: <span class="ui">TB-303 could not be read, its last saved sound was kept</span>.</p>
+
+        <h3 id="delete">Deleting a rack</h3>
+        <p>On the Start screen, the <span class="ui">×</span> at the right of a row shows when the
+        pointer is on the row or the keyboard reaches it. In the rack menu,
+        <span class="ui">Delete rack</span> deletes the open rack and returns to the Start screen;
+        it is grey for a rack never saved. Both ask <span class="ui caps">Delete rack?</span>
+        first.</p>
+        <p>The rack moves to the Trash, and your presets stay. To put it back, move its file from
+        the Trash into the <a href="#files"><code>configurations</code></a> folder while the app is
+        closed. The file has a long id for a name, and the rack's name is inside it. Unsaved changes
+        of a deleted rack go with it, and the question says so.</p>
 
         <h3 id="files">Where racks are stored</h3>
         <p>Everything lives in <code>~/Library/Application Support/Rackmate</code>:</p>
@@ -1004,9 +1033,9 @@
           +12 dB.</li>
           <li>Channels cannot be reordered.</li>
           <li>An effect that is turned off leaves the audio path, so its tail is cut.</li>
-          <li>Racks and presets cannot be renamed or deleted in the app.
-          <span class="ui">Save as</span> gives a copy a new name. To remove a rack, delete
-          its file in <a href="#files"><code>configurations</code></a> while the app is closed.
+          <li>Racks cannot be renamed, and presets cannot be renamed or deleted, in the app.
+          <span class="ui">Save as</span> gives a copy of a rack a new name. To remove a preset,
+          delete its file in <a href="#files"><code>presets</code></a> while the app is closed.
           The name is inside the file, not in the file name.</li>
           <li>The app does not start with the Mac. Launching it is up to you.</li>
           <li>This interface has been tried on a MacBook with a four-output interface. Paths through

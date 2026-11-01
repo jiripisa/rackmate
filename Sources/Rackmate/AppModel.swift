@@ -261,6 +261,36 @@ final class AppModel {
     }
 
     /// Asks before taking a channel out of the configuration.
+    func askToDelete(_ configuration: Configuration) {
+        // Looking at the plugin windows edits the session, so the session is read after that.
+        pluginWindows.noteChanges()
+        let isOpen = session?.configuration.id == configuration.id
+        dialog = .deleteRack(named: configuration.name, hasUnsavedChanges: isOpen && session?.isDirty == true) { [weak self] in
+            self?.delete(configuration)
+        }
+    }
+
+    private func delete(_ configuration: Configuration) {
+        do {
+            try configurationStore.moveToTrash(id: configuration.id)
+        } catch {
+            report("\(configuration.name) could not be deleted", error)
+            return
+        }
+        configurations = configurationStore.loadAll()
+        if session?.configuration.id == configuration.id { closeRack() }
+        show("\(configuration.name) moved to the Trash")
+    }
+
+    /// Back to the Start screen with nothing playing. Unsaved changes of a rack that is gone go with it.
+    private func closeRack() {
+        closeMenu()
+        closeAdd()
+        close()
+        session = nil
+        screen = .start
+    }
+
     func askToRemove(_ channel: Channel) {
         let id = channel.id
         dialog = .removeChannel(named: channel.slot.displayName) { [weak self] in
@@ -447,13 +477,16 @@ final class AppModel {
 
     /// The name in the top bar: the configurations to load, the current one marked.
     func showConfigurationMenu(anchor: CGRect) {
-        showMenu(PluginMenus.configurations(configurations, current: session?.configuration.id), anchor: anchor) { [weak self] action in
+        let current = session
+        showMenu(PluginMenus.configurations(configurations, current: current?.configuration.id, canDelete: current?.isSaved == true), anchor: anchor) { [weak self] action in
             switch action {
             case .load(let id):
                 guard let configuration = self?.configurations.first(where: { $0.id == id }) else { return }
                 self?.leave { self?.load(configuration) }
             case .new: self?.leave { self?.newConfiguration() }
             case .saveAs: self?.beginSaveAs()
+            case .delete:
+                if let configuration = current?.configuration { self?.askToDelete(configuration) }
             }
         }
     }

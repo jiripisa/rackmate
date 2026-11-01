@@ -301,10 +301,13 @@ function startScreen() {
         <div>
           <div class="configs">
             ${store.configs.map((config) => `
-              <button class="config-row" data-action="loadConfig" data-id="${config.id}">
-                <strong>${esc(config.name)}</strong>
-                <span>${esc(configSummary(config))}</span>
-              </button>`).join('')}
+              <div class="config-line">
+                <button class="config-row" data-action="loadConfig" data-id="${config.id}">
+                  <strong>${esc(config.name)}</strong>
+                  <span>${esc(configSummary(config))}</span>
+                </button>
+                <button class="remove config-delete" data-action="deleteConfig" data-id="${config.id}" aria-label="Delete ${esc(config.name)}" title="Delete rack">×</button>
+              </div>`).join('')}
           </div>
           <div class="start-actions">
             <button class="key primary" data-action="newConfig">New rack</button>
@@ -790,7 +793,9 @@ function configMenuHtml() {
     ${store.configs.map((config) => `<button role="menuitem" class="${config.id === session.savedId ? 'current' : ''}" data-action="loadConfig" data-id="${config.id}">${esc(config.name)}</button>`).join('')}
     <hr>
     <button role="menuitem" data-action="newConfig">New rack</button>
-    <button role="menuitem" data-action="saveAs">Save as</button>`;
+    <button role="menuitem" data-action="saveAs">Save as</button>
+    <hr>
+    <button role="menuitem" data-action="deleteConfig" data-id="${session.savedId ?? ''}"${session.savedId ? '' : ' disabled'}>Delete rack</button>`;
 }
 
 /* Dialogs */
@@ -1140,6 +1145,28 @@ const actions = {
             persist();
             Object.assign(session, { screen: 'start', config: null, savedId: null, dirty: false, windows: [] });
             render();
+          },
+        },
+      ],
+    });
+  },
+  deleteConfig(el) {
+    const { id } = el.dataset;
+    const config = store.configs.find((item) => item.id === id);
+    choiceDialog({
+      title: 'Delete rack?',
+      text: `${config.name} will be moved to the Trash. Your presets stay.${session.savedId === id && session.dirty ? ' Unsaved changes are lost.' : ''}`,
+      buttons: [
+        { label: 'Cancel', onClick: () => {} },
+        {
+          label: 'Delete',
+          primary: true,
+          onClick: () => {
+            store.configs = store.configs.filter((item) => item !== config);
+            persist();
+            if (session.savedId === id) Object.assign(session, { screen: 'start', config: null, savedId: null, dirty: false, windows: [] });
+            render();
+            showToast(`${config.name} moved to the Trash`);
           },
         },
       ],

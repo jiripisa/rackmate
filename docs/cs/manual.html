@@ -70,6 +70,7 @@
         </li>
         <li><a href="#saving">Ukládání</a>
           <ol>
+            <li><a href="#delete">Smazání racku</a></li>
             <li><a href="#files">Kde jsou racky uložené</a></li>
           </ol>
         </li>
@@ -125,11 +126,12 @@
         zařízení nesáhne, dokud nějaký rack neotevřete.</p>
         <figure class="fig">
           <div class="view" style="--iw:2440;--ih:720">
-            <img src="../assets/manual/start.png" alt="Úvodní obrazovka: vlevo logo Rackmate a kontrolka Ready, vpravo tři uložené racky a tlačítka New rack a Settings.">
+            <img src="../assets/manual/start.png" alt="Úvodní obrazovka: vlevo logo Rackmate a kontrolka Ready, vpravo tři uložené racky s × na prvním řádku a tlačítka New rack a Settings.">
             <span class="mark" style="--x:10.7;--y:91.1;--w:5.6;--h:6.7"><b>1</b></span>
             <span class="mark" style="--x:49.4;--y:18.6;--w:39.9;--h:57.4"><b>2</b></span>
             <span class="mark" style="--x:49.3;--y:78.8;--w:8.4;--h:10.2"><b>3</b></span>
             <span class="mark" style="--x:57.9;--y:78.8;--w:7.6;--h:10.2"><b>4</b></span>
+            <span class="mark" style="--x:85.3;--y:22.5;--w:3.4;--h:12.5"><b>5</b></span>
           </div>
         </figure>
         <dl class="controls">
@@ -144,6 +146,10 @@
           <dt><span class="n">4</span><span class="ui caps">Settings</span></dt>
           <dd>Otevře <a href="#settings">nastavení</a>. Tlačítkem
           <span class="ui caps">Done</span> se vrátíte sem.</dd>
+          <dt><span class="n">5</span><span class="ui">×</span></dt>
+          <dd>Objeví se vpravo na řádku, když je na něm ukazatel nebo se k němu dostane klávesnice,
+          a má tooltip <span class="ui">Delete rack</span>. Víc v části
+          <a href="#delete">Smazání racku</a>.</dd>
         </dl>
       </section>
 
@@ -224,7 +230,7 @@
 
         <h4>Menu racků</h4>
         <figure class="fig small">
-          <img src="../assets/manual/menu-rack.png" alt="Menu racků: Load rack se třemi názvy, aktuální jantarově, pod tím New rack a Save as.">
+          <img src="../assets/manual/menu-rack.png" alt="Menu racků: Load rack se třemi názvy, aktuální jantarově, pod tím New rack, Save as a Delete rack.">
         </figure>
         <dl class="controls">
           <dt><span class="ui">Load rack</span></dt>
@@ -236,6 +242,9 @@
           <dd>Uloží kopii pod novým názvem, který začíná starým názvem se slovem
           <span class="ui">copy</span>. Dál pracujete v kopii a původní rack zůstává tak,
           jak byl uložený.</dd>
+          <dt><span class="ui">Delete rack</span></dt>
+          <dd>Smaže otevřený rack a vrátí se na úvodní obrazovku. U racku, který ještě nikdy nebyl
+          uložený, je položka šedá. Víc v části <a href="#delete">Smazání racku</a>.</dd>
         </dl>
       </section>
 
@@ -693,6 +702,9 @@
         <figure class="fig medium">
           <img src="../assets/manual/dialog-update-rack.png" alt="Dialog Update rack? s tlačítky Not now a Save rack.">
         </figure>
+        <figure class="fig medium">
+          <img src="../assets/manual/dialog-delete-rack.png" alt="Dialog Delete rack? s tlačítky Cancel a Delete.">
+        </figure>
         <dl class="controls">
           <dt><span class="ui caps">Save preset</span></dt>
           <dd>Ptá se na název presetu. Název je označený, takže ho psaním přepíšete.</dd>
@@ -704,12 +716,29 @@
           <dd>Přijde z tlačítka <span class="ui">×</span> na kanálu.
           <span class="ui caps">Remove</span> odebere kanál i s efekty a počítá se to jako každá
           jiná změna.</dd>
+          <dt><span class="ui caps">Delete rack?</span></dt>
+          <dd>Přijde z tlačítka <span class="ui">×</span> na řádku úvodní obrazovky a z položky
+          <span class="ui">Delete rack</span> v menu racků. <span class="ui caps">Delete</span>
+          přesune rack do Koše, <span class="ui caps">Cancel</span> ho nechá být.
+          <kbd>Return</kbd> znamená Delete, <kbd>Esc</kbd> znamená Cancel. Víc v části
+          <a href="#delete">Smazání racku</a>.</dd>
         </dl>
         <p>V racku, který ještě nikdy uložený nebyl, po uložení presetu žádná otázka nepřijde. Řádek
         dole řekne, že je preset uložený, a dodá <span class="ui">It joins this rack when you save
         it.</span></p>
         <p>Když aplikace nedokáže přečíst zvuk z pluginu, nechá jeho naposledy uložený stav a řádek
         dole to oznámí: <span class="ui">TB-303 could not be read, its last saved sound was kept</span>.</p>
+
+        <h3 id="delete">Smazání racku</h3>
+        <p>Na úvodní obrazovce se vpravo na řádku objeví <span class="ui">×</span>, když je na
+        řádku ukazatel nebo se k němu dostane klávesnice. V menu racků smaže
+        <span class="ui">Delete rack</span> otevřený rack a vrátí se na úvodní obrazovku; u racku,
+        který ještě nikdy nebyl uložený, je položka šedá. Oba způsoby se nejdřív zeptají
+        <span class="ui caps">Delete rack?</span></p>
+        <p>Rack se přesune do Koše a vaše presety zůstávají. Zpátky ho vrátíte tak, že při zavřené
+        aplikaci přesunete jeho soubor z Koše do složky
+        <a href="#files"><code>configurations</code></a>. Soubor se jmenuje dlouhým identifikátorem,
+        název racku je uvnitř. Neuložené změny smazaného racku zmizí s ním a dialog na to upozorní.</p>
 
         <h3 id="files">Kde jsou racky uložené</h3>
         <p>Všechno je ve složce <code>~/Library/Application Support/Rackmate</code>:</p>
@@ -1004,10 +1033,10 @@
           na +12 dB.</li>
           <li>Kanály nejde přeuspořádat.</li>
           <li>Vypnutý efekt vypadne z cesty signálu, takže se jeho dozvuk utne.</li>
-          <li>Racky a presety v aplikaci nejde přejmenovat ani smazat.
-          <span class="ui">Save as</span> dá kopii nový název. Rack odstraníte tak, že
+          <li>Racky v aplikaci nejde přejmenovat a presety nejde přejmenovat ani smazat.
+          <span class="ui">Save as</span> dá kopii racku nový název. Preset odstraníte tak, že
           při zavřené aplikaci smažete jeho soubor ve složce
-          <a href="#files"><code>configurations</code></a>. Název je uvnitř souboru, ne v názvu
+          <a href="#files"><code>presets</code></a>. Název je uvnitř souboru, ne v názvu
           souboru.</li>
           <li>Aplikace se nespouští se startem Macu. Spuštění je na vás.</li>
           <li>Toto rozhraní se zatím zkoušelo na MacBooku se čtyřvýstupovou zvukovou kartou. Cesty

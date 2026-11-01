@@ -1271,4 +1271,27 @@ struct AudioSessionTests {
 
         #expect(bench.session.runner == nil)
     }
+
+    @Test("Closing while a reload waits starts no device")
+    func closeDuringAReload() async throws {
+        let bench = Bench()
+        await bench.session.open(configuration(), settings: .defaults)
+        let runner = try #require(bench.session.runner)
+        let gate = LoadGate()
+        runner.seams.load = { id in
+            await gate.pass()
+            return try await HostedPlugin.load(id)
+        }
+        let edit = Task { await bench.session.update(configuration(instrumentChannel())) }
+        while runner.pendingLoads == 0 { await Task.yield() }
+        let reload = Task { await bench.session.reload(configuration(), settings: .defaults) }
+        await Task.yield()
+
+        bench.session.close()
+        await gate.open()
+        await edit.value
+        await reload.value
+
+        #expect(bench.opened.count == 1)
+    }
 }

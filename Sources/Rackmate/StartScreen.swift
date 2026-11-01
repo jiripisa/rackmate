@@ -97,7 +97,11 @@ private struct ConfigurationList: View {
                 )
             }
             ForEach(model.configurations) { configuration in
-                ConfigurationRow(configuration: configuration) { model.load(configuration) }
+                ConfigurationRow(configuration: configuration) {
+                    model.load(configuration)
+                } delete: {
+                    model.askToDelete(configuration)
+                }
             }
         }
     }
@@ -106,8 +110,10 @@ private struct ConfigurationList: View {
 private struct ConfigurationRow: View {
     let configuration: Configuration
     let open: () -> Void
+    let delete: () -> Void
 
     @State private var isHovered = false
+    @FocusState private var isDeleteFocused: Bool
 
     var body: some View {
         Button(action: open) {
@@ -117,7 +123,29 @@ private struct ConfigurationRow: View {
         }
         .buttonStyle(.plain)
         .panelFocusOutline(outset: 0)
+        .overlay(alignment: .trailing) { deleteButton }
         .onHover { isHovered = $0 }
+    }
+
+    /// Shows with the pointer on the row, and for the keyboard when it holds the focus.
+    private var deleteButton: some View {
+        Button(action: delete) {
+            Text("×")
+                .font(.panelText(15))
+                .frame(width: 22, height: 22)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(RemoveButtonStyle())
+        .focused($isDeleteFocused)
+        .overlay {
+            if isDeleteFocused {
+                Rectangle().strokeBorder(Color.led, lineWidth: 2).allowsHitTesting(false)
+            }
+        }
+        .help("Delete rack")
+        .accessibilityLabel("Delete \(configuration.name)")
+        .padding(.trailing, 8)
+        .opacity(isHovered || isDeleteFocused ? 1 : 0)
     }
 }
 
