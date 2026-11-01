@@ -142,10 +142,8 @@ select.field:disabled { opacity: .55; }
   width: 15px;
   height: 15px;
   border-radius: 50%;
-  background:
-    linear-gradient(45deg, transparent 44%, #0d0e0f 44% 56%, transparent 56%),
-    linear-gradient(-45deg, transparent 44%, #0d0e0f 44% 56%, transparent 56%),
-    radial-gradient(circle at 35% 30%, #7a7b7c, #3b3c3e 70%);
+  /* A dark domed head in a thinner darker ring, and an upright Phillips recess lit on its upper rim. */
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 15 15'><defs><radialGradient id='d' gradientUnits='userSpaceOnUse' cx='7.5' cy='6.3' r='7.6'><stop offset='0' stop-color='%232c2c2e'/><stop offset='.6' stop-color='%231e1e20'/><stop offset='1' stop-color='%230f0f10'/></radialGradient><radialGradient id='r' gradientUnits='userSpaceOnUse' cx='7.5' cy='9.1' r='8.6'><stop offset='.86' stop-color='%2377777a' stop-opacity='0'/><stop offset='.96' stop-color='%2377777a' stop-opacity='.44'/><stop offset='1' stop-color='%2377777a' stop-opacity='0'/></radialGradient><radialGradient id='a' gradientUnits='userSpaceOnUse' cx='7.5' cy='7.1' r='4.8'><stop offset='0' stop-color='%23e4e2da' stop-opacity='.5'/><stop offset='.55' stop-color='%23e4e2da' stop-opacity='.35'/><stop offset='1' stop-color='%23e4e2da' stop-opacity='0'/></radialGradient><radialGradient id='t' gradientUnits='userSpaceOnUse' cx='7.5' cy='4.8' r='3.5'><stop offset='0' stop-color='%23f0eee6' stop-opacity='.94'/><stop offset='.5' stop-color='%23f0eee6' stop-opacity='.75'/><stop offset='1' stop-color='%23f0eee6' stop-opacity='0'/></radialGradient></defs><circle cx='7.5' cy='7.5' r='7.5' fill='%23050506'/><circle cx='7.5' cy='7.5' r='6.9' fill='url(%23d)'/><circle cx='7.5' cy='7.5' r='6.9' fill='url(%23r)'/><circle cx='7.5' cy='7.5' r='6.9' fill='url(%23a)'/><circle cx='7.5' cy='7.5' r='6.9' fill='url(%23t)'/><path d='M4.4 7.1h6.2M7.5 4v6.2' stroke='%23020202' stroke-width='2.4' stroke-linecap='round'/><ellipse cx='7.5' cy='12.3' rx='1.2' ry='.5' fill='%23d8d6ce' fill-opacity='.69'/></svg>") center / 100% no-repeat;
   box-shadow: 0 1px 1px #000;
 }
 .plate {

@@ -34,6 +34,8 @@ struct RackEar: View {
 
     let inset: CGFloat
 
+    @Environment(\.displayScale) private var displayScale
+
     var body: some View {
         VStack(spacing: 0) {
             screw
@@ -50,7 +52,7 @@ struct RackEar: View {
     }
 
     private var screw: some View {
-        RackArt.screw.frame(width: RackArt.screwDiameter, height: RackArt.screwDiameter)
+        RackArt.screw(scale: displayScale).frame(width: RackArt.screwDiameter, height: RackArt.screwDiameter)
     }
 }
 
@@ -204,33 +206,54 @@ enum RackArt {
 
     static let screwDiameter: CGFloat = 15
 
-    /// `.screw`, with room around it for its shadow, which the layout does not count.
-    static let screw = {
+    private static let screwAt1x = screwImage(scale: 1)
+    private static let screwAt2x = screwImage(scale: 2)
+
+    /// The screw for a screen of `scale`, because a cross this small loses its shape when it is scaled.
+    static func screw(scale: CGFloat) -> Image {
+        scale < 2 ? screwAt1x : screwAt2x
+    }
+
+    /// `.screw`: a dark domed head in a thinner darker ring, and an upright Phillips recess that catches
+    /// the light on its upper rim. There is room around it for its shadow, which the layout does not count.
+    private static func screwImage(scale: CGFloat) -> Image {
         let margin: CGFloat = 2
-        return paint(width: screwDiameter + 2 * margin, height: screwDiameter + 2 * margin) { context, _ in
-            let face = CGRect(x: margin, y: margin, width: screwDiameter, height: screwDiameter)
+        return paint(width: screwDiameter + 2 * margin, height: screwDiameter + 2 * margin, scale: scale) { context, _ in
+            let ring = CGRect(x: margin, y: margin, width: screwDiameter, height: screwDiameter)
+            let center = CGPoint(x: ring.midX, y: ring.midY)
+            let cross = CGPoint(x: center.x, y: center.y - 0.4)
+            let arm: CGFloat = 3.1
+
             context.saveGState()
             context.setShadow(offset: CGSize(width: 0, height: -scale), blur: scale, color: cgColor(0x000000))
-            context.setFillColor(cgColor(0x3B3C3E))
-            context.fillEllipse(in: face)
+            context.setFillColor(cgColor(0x050506))
+            context.fillEllipse(in: ring)
             context.restoreGState()
 
             context.saveGState()
-            context.addEllipse(in: face)
+            context.addEllipse(in: ring.insetBy(dx: 0.6, dy: 0.6))
             context.clip()
-            let center = CGPoint(x: margin + 0.35 * screwDiameter, y: margin + 0.3 * screwDiameter)
-            if let shine = gradient([(0x7A7B7C, 0), (0x3B3C3E, 1)]) {
-                context.drawRadialGradient(shine, startCenter: center, startRadius: 0, endCenter: center, endRadius: 10, options: .drawsAfterEndLocation)
+            if let dome = gradient([(0x2C2C2E, 0), (0x1E1E20, 0.6), (0x0F0F10, 1)]) {
+                let lit = CGPoint(x: center.x, y: center.y - 1.2)
+                context.drawRadialGradient(dome, startCenter: lit, startRadius: 0, endCenter: lit, endRadius: 7.6, options: .drawsAfterEndLocation)
             }
-            context.setStrokeColor(cgColor(0x0D0E0F))
-            context.setLineWidth(2.5)
+            context.fillGlow(0x77777A, [(0, 0.86), (0x70, 0.96), (0, 1)], at: CGPoint(x: center.x, y: center.y + 1.6), radius: 8.6)
+            context.fillGlow(0xE4E2DA, [(0x80, 0), (0x58, 0.55), (0, 1)], at: cross, radius: 4.8)
+            context.fillGlow(0xF0EEE6, [(0xF0, 0), (0xC0, 0.5), (0, 1)], at: CGPoint(x: cross.x, y: cross.y - 2.3), radius: 3.5)
+
+            context.setStrokeColor(cgColor(0x020202))
+            context.setLineWidth(2.4)
+            context.setLineCap(.round)
             context.strokeLineSegments(between: [
-                CGPoint(x: face.minX, y: face.minY), CGPoint(x: face.maxX, y: face.maxY),
-                CGPoint(x: face.maxX, y: face.minY), CGPoint(x: face.minX, y: face.maxY),
+                CGPoint(x: cross.x - arm, y: cross.y), CGPoint(x: cross.x + arm, y: cross.y),
+                CGPoint(x: cross.x, y: cross.y - arm), CGPoint(x: cross.x, y: cross.y + arm),
             ])
+
+            context.setFillColor(cgColor(0xD8D6CE, alpha: 0xB0))
+            context.fillEllipse(in: CGRect(x: center.x - 1.2, y: center.y + 4.3, width: 2.4, height: 1))
             context.restoreGState()
         }
-    }()
+    }
 
     /// `.ear .hole`, with its light lower edge.
     static let slot = paint(width: 15, height: 10) { context, _ in
@@ -340,8 +363,13 @@ enum RackArt {
         CGGradient(colorsSpace: colorSpace, colors: stops.map { cgColor($0.0) } as CFArray, locations: stops.map(\.1))
     }
 
-    /// An image of the size in points, drawn with the origin at the top left, for a 2x screen.
-    private static func paint(width: CGFloat, height: CGFloat, draw: (CGContext, CGSize) -> Void) -> Image {
+    /// One color, at the alpha of each stop.
+    fileprivate static func gradient(_ color: UInt32, alphas: [(UInt32, CGFloat)]) -> CGGradient? {
+        CGGradient(colorsSpace: colorSpace, colors: alphas.map { cgColor(color, alpha: $0.0) } as CFArray, locations: alphas.map(\.1))
+    }
+
+    /// An image of the size in points, drawn with the origin at the top left, by default for a 2x screen.
+    private static func paint(width: CGFloat, height: CGFloat, scale: CGFloat = RackArt.scale, draw: (CGContext, CGSize) -> Void) -> Image {
         let context = CGContext(
             data: nil, width: Int(width * scale), height: Int(height * scale), bitsPerComponent: 8, bytesPerRow: 0,
             space: colorSpace, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
@@ -358,6 +386,12 @@ private extension CGContext {
     func fillGradient(_ stops: [(UInt32, CGFloat)], height: CGFloat) {
         guard let gradient = RackArt.gradient(stops) else { return }
         drawLinearGradient(gradient, start: .zero, end: CGPoint(x: 0, y: height), options: [])
+    }
+
+    /// A soft light of one color around `center`, clear wherever the stops say nothing.
+    func fillGlow(_ color: UInt32, _ alphas: [(UInt32, CGFloat)], at center: CGPoint, radius: CGFloat) {
+        guard let gradient = RackArt.gradient(color, alphas: alphas) else { return }
+        drawRadialGradient(gradient, startCenter: center, startRadius: 0, endCenter: center, endRadius: radius, options: [])
     }
 
     /// CSS `inset 0 <offsetY> <blur> <color>`, in points. A ring around the shape casts the shadow
