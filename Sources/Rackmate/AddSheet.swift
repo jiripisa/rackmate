@@ -58,7 +58,7 @@ final class AddModel {
         switch target {
         case .channel:
             initialKind = .instrument
-            title = "Add to stack"
+            title = "Add to rack"
         case .insert(let id, _):
             initialKind = .effect
             title = "Add effect to \(channels?.first { $0.id == id }?.slot.displayName ?? "channel")"

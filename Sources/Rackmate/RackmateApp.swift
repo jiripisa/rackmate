@@ -24,7 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.appearance = NSAppearance(named: .darkAqua)
         #if DEBUG
-        // For looking at the mixer without clicking: --open "<configuration name>".
+        // For looking at the mixer without clicking: --open "<rack name>".
         let arguments = CommandLine.arguments
         if let flag = arguments.firstIndex(of: "--open"), arguments.indices.contains(flag + 1),
            let configuration = model.configurations.first(where: { $0.name == arguments[flag + 1] }) {
@@ -56,7 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-/// New configuration, Save and Save as in the File menu, and Settings in the app menu. They are off
+/// New rack, Save and Save as in the File menu, and Settings in the app menu. They are off
 /// while a question is open and where they do not apply. Check for Updates sits next to About.
 private struct AppCommands: Commands {
     let model: AppModel
@@ -68,7 +68,7 @@ private struct AppCommands: Commands {
                 .disabled(!updates.canCheck)
         }
         CommandGroup(replacing: .newItem) {
-            Button("New configuration") { model.leave { model.newConfiguration() } }
+            Button("New rack") { model.leave { model.newConfiguration() } }
                 .disabled(!model.commandsAvailable)
         }
         CommandGroup(replacing: .saveItem) {

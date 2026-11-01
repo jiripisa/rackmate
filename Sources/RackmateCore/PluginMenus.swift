@@ -110,11 +110,11 @@ public enum PluginMenus {
         return entries
     }
 
-    /// The configurations to load, the current one marked, then New configuration and Save as.
+    /// The configurations to load, the current one marked, then New rack and Save as.
     public static func configurations(_ configurations: [Configuration], current: UUID?) -> [MenuEntry<ConfigurationMenuAction>] {
-        [.legend("Load configuration")]
+        [.legend("Load rack")]
             + configurations.map { .item($0.name, action: .load($0.id), isCurrent: $0.id == current) }
-            + [.separator, .item("New configuration", action: .new), .item("Save as", action: .saveAs)]
+            + [.separator, .item("New rack", action: .new), .item("Save as", action: .saveAs)]
     }
 
     /// Off, then the device's inputs. A sidechain the configuration holds stays listed.

@@ -17,7 +17,7 @@ struct SaveFlowTests {
 
     @Test func theQuestionNamesTheConfigurationOrCallsItNew() {
         #expect(SaveFlow.question(forConfigurationNamed: "Night rig") == "Do you want to save the changes to Night rig?")
-        #expect(SaveFlow.question(forConfigurationNamed: "") == "Do you want to save the changes to this new configuration?")
+        #expect(SaveFlow.question(forConfigurationNamed: "") == "Do you want to save the changes to this new rack?")
     }
 
     @Test func aCopyHasANewIdentityAndKeepsTheChannels() {

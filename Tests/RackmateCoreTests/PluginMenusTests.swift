@@ -206,11 +206,11 @@ struct ConfigurationMenuTests {
         let second = Configuration.fixture(name: "Second")
         let entries = PluginMenus.configurations([first, second], current: second.id)
         #expect(entries == [
-            .legend("Load configuration"),
+            .legend("Load rack"),
             .item("First", action: .load(first.id), isCurrent: false),
             .item("Second", action: .load(second.id), isCurrent: true),
             .separator,
-            .item("New configuration", action: .new),
+            .item("New rack", action: .new),
             .item("Save as", action: .saveAs),
         ])
     }

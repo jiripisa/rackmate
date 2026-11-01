@@ -66,7 +66,7 @@ struct StartScreen: View {
 
     private var actions: some View {
         HStack(spacing: 10) {
-            Button("New configuration") { model.newConfiguration() }
+            Button("New rack") { model.newConfiguration() }
                 .buttonStyle(KeyButtonStyle.primary)
             Button("Settings") { model.showSettings() }
                 .buttonStyle(.key)
@@ -90,8 +90,8 @@ private struct ConfigurationList: View {
         VStack(spacing: 0) {
             if model.configurations.isEmpty {
                 ConfigurationRowText(
-                    name: "No configurations yet",
-                    detail: "Choose New configuration to set up your first one."
+                    name: "No racks yet",
+                    detail: "Choose New rack to set up your first one."
                 )
             }
             ForEach(model.configurations) { configuration in

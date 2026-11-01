@@ -612,7 +612,7 @@ final class AppModel {
                 self?.saveCurrent()
             }
         case .keepWithUnsavedConfiguration:
-            show("\(name) saved. It joins this configuration when you save it.")
+            show("\(name) saved. It joins this rack when you save it.")
         }
     }
 

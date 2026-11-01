@@ -25,7 +25,7 @@ extension ChoiceDialog {
     static func removeChannel(named name: String, remove: @escaping () -> Void) -> ChoiceDialog {
         ChoiceDialog(
             title: "Remove channel?",
-            text: "\(name) and its effects will be removed from this configuration.",
+            text: "\(name) and its effects will be removed from this rack.",
             choices: [
                 Choice(label: "Cancel"),
                 Choice(label: "Remove", isPrimary: true, action: remove),
@@ -36,11 +36,11 @@ extension ChoiceDialog {
     /// A preset was stored, and the owner decides whether the saved configuration follows.
     static func updateConfiguration(preset: String, configuration: String, save: @escaping () -> Void) -> ChoiceDialog {
         ChoiceDialog(
-            title: "Update configuration?",
+            title: "Update rack?",
             text: "\(preset) is saved as a preset. Do you also want to use it in \(configuration)?",
             choices: [
                 Choice(label: "Not now"),
-                Choice(label: "Save configuration", isPrimary: true, action: save),
+                Choice(label: "Save rack", isPrimary: true, action: save),
             ]
         )
     }
@@ -84,14 +84,14 @@ extension NameDialog {
             label: "Preset name for \(plugin)",
             value: current ?? "",
             confirmLabel: "Save preset",
-            note: "The preset stays available for this plugin in all configurations.",
+            note: "The preset stays available for this plugin in all racks.",
             confirm: save
         )
     }
 
     /// A configuration that was never saved is named when it first is.
     static func saveConfiguration(value: String, save: @escaping (String) -> Void, cancel: @escaping () -> Void) -> NameDialog {
-        NameDialog(title: "Save configuration", label: "Name", value: value, confirmLabel: "Save", confirm: save, cancel: cancel)
+        NameDialog(title: "Save rack", label: "Name", value: value, confirmLabel: "Save", confirm: save, cancel: cancel)
     }
 
     /// Save as starts from the name with "copy" added.

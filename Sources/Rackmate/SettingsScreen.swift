@@ -123,7 +123,7 @@ struct SettingsScreen: View {
     private var instrumentSection: some View {
         SettingsSection(
             title: "Instrument positions",
-            text: "A new instrument takes the routing of its position in the stack. You can change it on the channel afterwards."
+            text: "A new instrument takes the routing of its position in the rack. You can change it on the channel afterwards."
         ) {
             Grid(alignment: .leading, horizontalSpacing: 6, verticalSpacing: 6) {
                 GridRow {

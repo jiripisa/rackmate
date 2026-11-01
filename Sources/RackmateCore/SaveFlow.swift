@@ -16,7 +16,7 @@ public enum SaveFlow {
     }
 
     public static func question(forConfigurationNamed name: String) -> String {
-        "Do you want to save the changes to \(name.isEmpty ? "this new configuration" : name)?"
+        "Do you want to save the changes to \(name.isEmpty ? "this new rack" : name)?"
     }
 
     /// The channels and effects keep their IDs, since they only have to be unique inside a configuration.

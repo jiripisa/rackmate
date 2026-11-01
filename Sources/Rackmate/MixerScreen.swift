@@ -102,7 +102,7 @@ private struct TopBar: View {
     }
 
     private var name: String {
-        guard let name = model.session?.configuration.name, !name.isEmpty else { return "New configuration" }
+        guard let name = model.session?.configuration.name, !name.isEmpty else { return "New rack" }
         return name
     }
 
