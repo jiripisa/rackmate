@@ -39,8 +39,7 @@ after `main` is pushed, in the last item of step 5.
 1. `git status` clean, on `main`, up to date. On the first release the new
    repository is empty, so there is nothing to compare with. Create the branch
    `release/vX.Y.Z`.
-2. Pick the version. The **first release of this repo is 0.2.0** (the version
-   the website links already point at). After that: patch for fixes and small
+2. Pick the version. The first release of this repo was 1.0.0. After that: patch for fixes and small
    additions, minor for new features or removed UI, major only when the user
    says so. Say which and why.
 3. `CHANGELOG.md`: rename `## Unreleased` to `## X.Y.Z — YYYY-MM-DD`. If there
@@ -51,8 +50,7 @@ after `main` is pushed, in the last item of step 5.
    `Resources/Info.plist`.
 5. Replace the old version in the website: `grep -rn "<old version>" docs/*.html docs/cs/*.html`
    (download links `releases/download/v…/Rackmate-….dmg` and version texts).
-   On the first release the pages already say 0.2.0, and the lines about
-   Pluginarium 0.1.0 stay as they are.
+   The lines about Pluginarium 0.1.0 stay as they are.
 
 Check: `swift test` green (redirect the output to a file, read the summary line).
 

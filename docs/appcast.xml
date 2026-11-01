@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Rackmate</title>
+    <link>https://jiripisa.github.io/rackmate/</link>
+    <description>Rackmate updates</description>
+    <item>
+      <title>Rackmate 1.0.0</title>
+      <sparkle:version>1.0.0</sparkle:version>
+      <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <pubDate>Sun, 01 Nov 2026 16:43:18 +0000</pubDate>
+      <description><![CDATA[<ul><li>Each channel shows the plugin&#x27;s maker above its name.</li><li>Pluginarium is now Rackmate. Your racks, presets and settings come along at the first launch.</li><li>A configuration is now called a rack.</li><li>A new look: the panel is a rack of units with ears, screws and brushed metal, with the logo on the Start screen and a gear for Settings.</li><li>Each channel is now a rack unit. MIDI channel and audio routing show on seven-segment displays: click a value to change it. Open plugin and Follow Start/Stop are lit icons, with their names in tooltips.</li><li>Effects run left to right. Each has an on and off switch, saved with the rack. Drag an effect beside another to run it in series, or under it to run it in parallel, also into another channel.</li><li>Hold a dragged effect near the rack&#x27;s top or bottom edge and the rack scrolls, so a drag can reach a channel out of view.</li><li>The window is now at least 1200 points wide.</li><li>The app icon fills its whole shape instead of sitting small on a light plate.</li></ul>]]></description>
+      <enclosure url="https://github.com/jiripisa/rackmate/releases/download/v1.0.0/Rackmate-1.0.0.dmg" type="application/octet-stream" sparkle:edSignature="n6a8xtKSrvCXlriFgwK5/iR/1Wc+F9yAd6dbOCbQpvr+vL1sho+2pOqe3OSLi4HRE0yJJpbjlef01uFM8HCLCQ==" length="7243777"/>
+    </item>
+  </channel>
+</rss>
