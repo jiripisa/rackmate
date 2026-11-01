@@ -197,7 +197,9 @@ private struct SlotCard<Controls: View>: View {
 /// `.fx-open`: the small picture, hidden in a narrow slot, and the name.
 private struct SlotName: View {
     private static let fontSize: CGFloat = 17
-    private static let pictureSize: CGFloat = 11
+    /// The bars span 14 of the art's 17 units and end 2 above its bottom, so at this side they stand
+    /// exactly as tall as the capitals, on the same baseline.
+    private static let pictureSide: CGFloat = 15.5
 
     let look: EffectLook
 
@@ -205,9 +207,8 @@ private struct SlotName: View {
         // On one baseline and as tall as the capitals: DIN Condensed sits high in its line box.
         HStack(alignment: .firstTextBaseline, spacing: 7) {
             if look.showsPicture {
-                PluginGlyph(kind: .slot)
-                    .frame(width: Self.pictureSize, height: Self.pictureSize)
-                    .alignmentGuide(.firstTextBaseline) { $0[.bottom] }
+                PluginGlyph(kind: .slot, slotSide: Self.pictureSide)
+                    .alignmentGuide(.firstTextBaseline) { $0[.bottom] - Self.pictureSide * 2 / 17 }
             }
             Text(look.name)
                 .font(.panelDisplay(Self.fontSize))

@@ -121,10 +121,12 @@ struct PluginGlyph: View {
     }
 
     let kind: Kind
+    /// The side of the small picture on an effect slot.
+    var slotSide: CGFloat = 17
 
     var body: some View {
         if kind == .slot {
-            VectorArtView(art: kind.art).frame(width: 17, height: 17)
+            VectorArtView(art: kind.art).frame(width: slotSide, height: slotSide)
         } else {
             VectorArtView(art: kind.art).frame(width: 54, height: 36).foregroundStyle(Color.glyph)
         }
