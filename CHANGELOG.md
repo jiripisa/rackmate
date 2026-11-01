@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.1 — 2026-11-01
 
 - Effects of type `aumf`, which include Arturia's, are now in the Effects list and can go in a channel's chain. They stay in the Instruments list too, since vocoders use that type.
 - The second input of such a plugin now shows as Sidechain in.

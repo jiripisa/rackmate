@@ -5,13 +5,13 @@
     <link>https://jiripisa.github.io/rackmate/</link>
     <description>Rackmate updates</description>
     <item>
-      <title>Rackmate 1.1.0</title>
-      <sparkle:version>1.1.0</sparkle:version>
-      <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
+      <title>Rackmate 1.1.1</title>
+      <sparkle:version>1.1.1</sparkle:version>
+      <sparkle:shortVersionString>1.1.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-      <pubDate>Sun, 01 Nov 2026 17:11:16 +0000</pubDate>
-      <description><![CDATA[<ul><li>Delete a rack: the × on its row on the Start screen, or Delete rack in the rack menu. It goes to the Trash, and its presets stay.</li></ul>]]></description>
-      <enclosure url="https://github.com/jiripisa/rackmate/releases/download/v1.1.0/Rackmate-1.1.0.dmg" type="application/octet-stream" sparkle:edSignature="zzeUlw36jdxHNEqZGSbDThM3kas2Rz6SwqEEdA0rPk0V91srIntRE8hbQA06cWTcn0mSUQvIYC/m4rnSaeKMBA==" length="7253929"/>
+      <pubDate>Sun, 01 Nov 2026 22:00:07 +0000</pubDate>
+      <description><![CDATA[<ul><li>Effects of type <code>aumf</code>, which include Arturia&#x27;s, are now in the Effects list and can go in a channel&#x27;s chain. They stay in the Instruments list too, since vocoders use that type.</li><li>The second input of such a plugin now shows as Sidechain in.</li></ul>]]></description>
+      <enclosure url="https://github.com/jiripisa/rackmate/releases/download/v1.1.1/Rackmate-1.1.1.dmg" type="application/octet-stream" sparkle:edSignature="pyz/9ju8znGoHVj4hyvZWK7Mr2qD+dUWH92hKkdqQI1Rc0hVbbKPlrMtvuru1I6mGI4mIA+vZFlHhCOKfS3lDA==" length="7255022"/>
     </item>
   </channel>
 </rss>
