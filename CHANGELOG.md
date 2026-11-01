@@ -8,6 +8,7 @@
 - Each channel is now a rack unit. MIDI channel and audio routing show on seven-segment displays: click a value to change it. Open plugin and Follow Start/Stop are lit icons, with their names in tooltips.
 - Effects run left to right. Each has an on and off switch, saved with the rack. Drag an effect beside another to run it in series, or under it to run it in parallel, also into another channel.
 - Hold a dragged effect near the rack's top or bottom edge and the rack scrolls, so a drag can reach a channel out of view.
+- The window is now at least 1200 points wide.
 
 ## 0.1.0 — 2026-11-01
 
