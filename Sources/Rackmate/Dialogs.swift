@@ -304,6 +304,11 @@ private struct NameDialogBox: View {
             }
             .padding(.top, 16)
         }
-        .onAppear { isFocused = true }
+        // Set after the update that shows the dialog. Set in onAppear, the request is lost and
+        // focus lands on Cancel, so typed letters never reach the name.
+        .task {
+            await Task.yield()
+            isFocused = true
+        }
     }
 }
