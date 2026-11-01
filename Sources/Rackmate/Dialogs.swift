@@ -34,10 +34,11 @@ extension ChoiceDialog {
     }
 
     /// Deleting a rack is asked about too. It goes to the Trash, and its presets belong to all racks.
-    static func deleteRack(named name: String, delete: @escaping () -> Void) -> ChoiceDialog {
+    static func deleteRack(named name: String, hasUnsavedChanges: Bool, delete: @escaping () -> Void) -> ChoiceDialog {
         ChoiceDialog(
             title: "Delete rack?",
-            text: "\(name) will be moved to the Trash. Your presets stay.",
+            text: "\(name) will be moved to the Trash. Your presets stay."
+                + (hasUnsavedChanges ? " Unsaved changes are lost." : ""),
             choices: [
                 Choice(label: "Cancel"),
                 Choice(label: "Delete", isPrimary: true, action: delete),

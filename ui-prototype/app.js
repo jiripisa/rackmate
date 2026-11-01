@@ -1155,7 +1155,7 @@ const actions = {
     const config = store.configs.find((item) => item.id === id);
     choiceDialog({
       title: 'Delete rack?',
-      text: `${config.name} will be moved to the Trash. Your presets stay.`,
+      text: `${config.name} will be moved to the Trash. Your presets stay.${session.savedId === id && session.dirty ? ' Unsaved changes are lost.' : ''}`,
       buttons: [
         { label: 'Cancel', onClick: () => {} },
         {

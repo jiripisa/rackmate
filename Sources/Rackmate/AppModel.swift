@@ -262,7 +262,12 @@ final class AppModel {
 
     /// Asks before taking a channel out of the configuration.
     func askToDelete(_ configuration: Configuration) {
-        dialog = .deleteRack(named: configuration.name) { [weak self] in self?.delete(configuration) }
+        // Looking at the plugin windows edits the session, so the session is read after that.
+        pluginWindows.noteChanges()
+        let isOpen = session?.configuration.id == configuration.id
+        dialog = .deleteRack(named: configuration.name, hasUnsavedChanges: isOpen && session?.isDirty == true) { [weak self] in
+            self?.delete(configuration)
+        }
     }
 
     private func delete(_ configuration: Configuration) {
