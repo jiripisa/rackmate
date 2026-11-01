@@ -13,7 +13,7 @@ struct MixerScreen: View {
         VStack(spacing: 0) {
             TopBar(model: model)
             GeometryReader { viewport in
-                ScrollView(.vertical) {
+                RackScrollView {
                     VStack(spacing: 5) {
                         ForEach(Array(channels.enumerated()), id: \.element.id) { index, channel in
                             ChannelUnit(channel: channel, index: index)
@@ -24,20 +24,52 @@ struct MixerScreen: View {
                     .padding(.vertical, 5)
                     .frame(minHeight: viewport.size.height, alignment: .top)
                 }
-                .scrollBounceBehavior(.basedOnSize)
                 .reportsFrame(of: .rack)
             }
         }
         .coordinateSpace(.named(EffectDrag.mixerSpace))
         .overlay(alignment: .topLeading) { EffectDragLayer() }
-        .onPreferenceChange(EffectFramesKey.self) { [effectDrag] frames in
-            MainActor.assumeIsolated { effectDrag.frames = frames }
+        .onPreferenceChange(EffectFramesKey.self) { [effectDrag, model] frames in
+            MainActor.assumeIsolated { effectDrag.place(frames, in: model.session?.configuration) }
         }
         .environment(model)
         .environment(effectDrag)
     }
 
     private var channels: [Channel] { model.session?.configuration.channels ?? [] }
+}
+
+/// The units' scroll view, which moves by itself while an effect is dragged near its top or bottom
+/// edge. The position lives here, so those steps do not redraw the mixer.
+private struct RackScrollView<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    @Environment(EffectDrag.self) private var drag
+    @State private var position = ScrollPosition()
+
+    var body: some View {
+        ScrollView(.vertical) { content }
+            .scrollBounceBehavior(.basedOnSize)
+            .scrollPosition($position)
+            .onScrollGeometryChange(for: ScrollGeometry.self, of: { $0 }) { [drag] _, geometry in
+                drag.rackGeometry = geometry
+            }
+            .task(id: drag.source != nil) {
+                while drag.source != nil, !Task.isCancelled {
+                    scrollStep()
+                    try? await Task.sleep(for: EffectDragScroll.interval)
+                }
+            }
+    }
+
+    private func scrollStep() {
+        guard let rack = drag.frames[.rack], let geometry = drag.rackGeometry else { return }
+        let step = EffectDragScroll.step(pointerY: drag.pointer.y, top: rack.minY, bottom: rack.maxY)
+        let start = -geometry.contentInsets.top
+        let end = max(start, geometry.contentSize.height + geometry.contentInsets.bottom - geometry.containerSize.height)
+        let offset = min(max(geometry.contentOffset.y + step, start), end)
+        if offset != geometry.contentOffset.y { position.scrollTo(y: offset) }
+    }
 }
 
 /// `.add-row`, on a unit of its own.

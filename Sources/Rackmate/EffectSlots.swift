@@ -456,7 +456,9 @@ final class EffectDrag {
 
     /// Where everything is, kept up to date while the mixer moves. Nothing is drawn from this, so
     /// a scroll does not redraw the mixer.
-    @ObservationIgnored var frames: [EffectPart: CGRect] = [:]
+    @ObservationIgnored private(set) var frames: [EffectPart: CGRect] = [:]
+    /// Where the rack has scrolled to, also not drawn from.
+    @ObservationIgnored var rackGeometry: ScrollGeometry?
 
     func move(_ look: EffectLook, to point: CGPoint, in configuration: Configuration) {
         if source == nil {
@@ -465,6 +467,14 @@ final class EffectDrag {
         }
         pointer = point
         landing = configuration.landing(of: look.effect.id, at: point, frames: frames)
+    }
+
+    /// Takes the new `frames`. The rack can scroll under a pointer that stands still, so what the
+    /// pointer is over is looked up again.
+    func place(_ frames: [EffectPart: CGRect], in configuration: Configuration?) {
+        self.frames = frames
+        guard let source, let configuration else { return }
+        landing = configuration.landing(of: source.effect.id, at: pointer, frames: frames)
     }
 
     func end() {
