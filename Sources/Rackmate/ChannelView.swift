@@ -16,9 +16,9 @@ struct ChannelUnit: View {
 
     let channel: Channel
     let index: Int
+    let activity: ChannelActivity
 
     @Environment(AppModel.self) private var model
-    @State private var activity = ChannelActivity()
 
     var body: some View {
         RackUnit(tint: channel.kind == .effect ? .standalone : .plain) {
@@ -35,9 +35,6 @@ struct ChannelUnit: View {
             .padding(.vertical, 11)
             .frame(minHeight: Self.minimumHeight)
             .fixedSize(horizontal: false, vertical: true)
-        }
-        .task(id: channel.id) { [kind = channel.kind, audio] in
-            await activity.poll(channel: channel.id, kind: kind, audio: audio)
         }
     }
 

@@ -8,6 +8,7 @@ struct MixerScreen: View {
     let model: AppModel
 
     @State private var effectDrag = EffectDrag()
+    @State private var meters = MeterTicker()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -16,7 +17,7 @@ struct MixerScreen: View {
                 RackScrollView {
                     VStack(spacing: 5) {
                         ForEach(Array(channels.enumerated()), id: \.element.id) { index, channel in
-                            ChannelUnit(channel: channel, index: index)
+                            ChannelUnit(channel: channel, index: index, activity: meters.activity(of: channel.id))
                         }
                         AddRow { model.beginAddChannel() }
                         VentUnit()
@@ -32,6 +33,7 @@ struct MixerScreen: View {
         .onPreferenceChange(EffectFramesKey.self) { [effectDrag, model] frames in
             MainActor.assumeIsolated { effectDrag.place(frames, in: model.session?.configuration) }
         }
+        .task { [meters, model] in await meters.run(model: model) }
         .environment(model)
         .environment(effectDrag)
     }

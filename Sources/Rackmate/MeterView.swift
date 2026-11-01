@@ -2,12 +2,47 @@ import RackmateAudio
 import RackmateCore
 import SwiftUI
 
-/// What moves on a channel: its two meter bars and its LED. One poll of the render core feeds them 15
-/// times a second, and only the views that show them read these, so nothing around them redraws.
+/// The one clock of the meters, owned by the mixer. It looks at every channel in one pass, so channels
+/// add no wake-ups.
+@MainActor
+final class MeterTicker {
+    private static let interval = Duration.seconds(1.0 / 15)
+
+    private var activities: [UUID: ChannelActivity] = [:]
+
+    /// What moves on `channel`, which keeps its readings for as long as the channel stays in the rack.
+    func activity(of channel: UUID) -> ChannelActivity {
+        if let known = activities[channel] { return known }
+        let activity = ChannelActivity()
+        activities[channel] = activity
+        return activity
+    }
+
+    /// Runs until the task is cancelled.
+    func run(model: AppModel) async {
+        while !Task.isCancelled {
+            try? await Task.sleep(for: Self.interval)
+            poll(model)
+        }
+    }
+
+    private func poll(_ model: AppModel) {
+        let channels = model.session?.configuration.channels ?? []
+        if activities.count > channels.count {
+            activities = activities.filter { id, _ in channels.contains { $0.id == id } }
+        }
+        let now = ContinuousClock.now
+        for channel in channels {
+            activities[channel.id]?.poll(channel: channel.id, kind: channel.kind, audio: model.audio, at: now)
+        }
+    }
+}
+
+/// What moves on a channel: its two meter bars and its LED. `MeterTicker` feeds them 15 times a second,
+/// and only the views that show them read these, so nothing around them redraws.
 @MainActor
 @Observable
 final class ChannelActivity {
-    private static let pollInterval = Duration.seconds(1.0 / 15)
     /// The bar spans this many dB below full scale.
     private static let range: Float = 60
     /// How far a bar falls per poll once the signal has dropped, so a short peak stays readable.
@@ -19,22 +54,17 @@ final class ChannelActivity {
 
     @ObservationIgnored private var light = ActivityLight()
 
-    /// An instrument's LED follows the MIDI that reaches it, a standalone effect's its signal. Runs
-    /// until the task is cancelled.
-    func poll(channel: UUID, kind: PluginKind, audio: AudioSession?) async {
-        while !Task.isCancelled {
-            try? await Task.sleep(for: Self.pollInterval)
-            let peaks = Self.read(channel: channel, audio: audio)
-            let targets = (left: Self.position(peaks.left), right: Self.position(peaks.right))
-            let now = ContinuousClock.now
-            let lit: Bool
-            if kind == .effect {
-                lit = light.update(hasSignal: targets.left > 0 || targets.right > 0, at: now)
-            } else {
-                lit = light.update(eventCount: audio?.router.eventCount(channel: channel) ?? 0, at: now)
-            }
-            show(left: Self.follow(left, target: targets.left), right: Self.follow(right, target: targets.right), isLit: lit)
+    /// An instrument's LED follows the MIDI that reaches it, a standalone effect's its output level.
+    func poll(channel: UUID, kind: PluginKind, audio: AudioSession?, at now: ContinuousClock.Instant) {
+        let peaks = Self.read(channel: channel, audio: audio)
+        let targets = (left: Self.position(peaks.left), right: Self.position(peaks.right))
+        let lit: Bool
+        if kind == .effect {
+            lit = light.update(hasSignal: targets.left > 0 || targets.right > 0, at: now)
+        } else {
+            lit = light.update(eventCount: audio?.router.eventCount(channel: channel) ?? 0, at: now)
         }
+        show(left: Self.follow(left, target: targets.left), right: Self.follow(right, target: targets.right), isLit: lit)
     }
 
     /// Writes only what changed, as every write wakes the views that read it.
