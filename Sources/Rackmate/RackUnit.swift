@@ -206,51 +206,86 @@ enum RackArt {
 
     static let screwDiameter: CGFloat = 15
 
-    private static let screwAt1x = screwImage(scale: 1)
-    private static let screwAt2x = screwImage(scale: 2)
+    /// What a screw is drawn with, set by hand for each scale, as the cross has a few pixels to work with.
+    private struct ScrewTuning {
+        /// How far the cross sits above the middle of the head.
+        var crossRise: CGFloat
+        var crossWidth: CGFloat
+        /// From the middle of the cross to the end of an arm. The cross spans about 47 % of the head.
+        var armAcross: CGFloat
+        var armDown: CGFloat
+        var highlightRise: CGFloat
+        var highlightBlur: CGFloat
+        var highlightAlpha: UInt32
+        var glintDrop: CGFloat
+        var glintRadius: CGFloat
+    }
 
-    /// The screw for a screen of `scale`, because a cross this small loses its shape when it is scaled.
+    private static let screwAt1x = screwImage(
+        scale: 1,
+        ScrewTuning(
+            crossRise: 0, crossWidth: 1.7, armAcross: 3.6, armDown: 3.4,
+            highlightRise: 0.7, highlightBlur: 0.9, highlightAlpha: 0xB0, glintDrop: 5, glintRadius: 1.3))
+    private static let screwAt2x = screwImage(
+        scale: 2,
+        ScrewTuning(
+            crossRise: 0.5, crossWidth: 2, armAcross: 3.6, armDown: 3.4,
+            highlightRise: 0.5, highlightBlur: 0.8, highlightAlpha: 0xC0, glintDrop: 4.5, glintRadius: 1.1))
+
+    /// The screw for a screen of `scale`.
     static func screw(scale: CGFloat) -> Image {
         scale < 2 ? screwAt1x : screwAt2x
     }
 
-    /// `.screw`: a dark domed head in a thinner darker ring, and an upright Phillips recess that catches
-    /// the light on its upper rim. There is room around it for its shadow, which the layout does not count.
-    private static func screwImage(scale: CGFloat) -> Image {
+    /// `.screw`: a dark metal dome lit softly from above in a fine darker ring, with a small upright
+    /// black Phillips recess, metal all around it, a pale highlight on its upper edges and a small
+    /// glint under it. There is room around it for its shadow, which the layout does not count.
+    private static func screwImage(scale: CGFloat, _ tuning: ScrewTuning) -> Image {
         let margin: CGFloat = 2
         return paint(width: screwDiameter + 2 * margin, height: screwDiameter + 2 * margin, scale: scale) { context, _ in
             let ring = CGRect(x: margin, y: margin, width: screwDiameter, height: screwDiameter)
             let center = CGPoint(x: ring.midX, y: ring.midY)
-            let cross = CGPoint(x: center.x, y: center.y - 0.4)
-            let arm: CGFloat = 3.1
+            let cross = CGPoint(x: center.x, y: center.y - tuning.crossRise)
+            let across = tuning.armAcross - tuning.crossWidth / 2
+            let down = tuning.armDown - tuning.crossWidth / 2
+            let recess = [
+                CGPoint(x: cross.x - across, y: cross.y), CGPoint(x: cross.x + across, y: cross.y),
+                CGPoint(x: cross.x, y: cross.y - down), CGPoint(x: cross.x, y: cross.y + down),
+            ]
 
             context.saveGState()
             context.setShadow(offset: CGSize(width: 0, height: -scale), blur: scale, color: cgColor(0x000000))
-            context.setFillColor(cgColor(0x050506))
+            context.setFillColor(cgColor(0x040405))
             context.fillEllipse(in: ring)
             context.restoreGState()
 
             context.saveGState()
-            context.addEllipse(in: ring.insetBy(dx: 0.6, dy: 0.6))
+            context.addEllipse(in: ring.insetBy(dx: 0.5, dy: 0.5))
             context.clip()
-            if let dome = gradient([(0x2C2C2E, 0), (0x1E1E20, 0.6), (0x0F0F10, 1)]) {
-                let lit = CGPoint(x: center.x, y: center.y - 1.2)
-                context.drawRadialGradient(dome, startCenter: lit, startRadius: 0, endCenter: lit, endRadius: 7.6, options: .drawsAfterEndLocation)
+            if let dome = gradient([(0x4A4846, 0), (0x2D2C2B, 0.4), (0x151514, 0.72), (0x070707, 1)]) {
+                let lit = CGPoint(x: center.x, y: center.y - 2.7)
+                context.drawRadialGradient(dome, startCenter: lit, startRadius: 0, endCenter: lit, endRadius: 8.6, options: .drawsAfterEndLocation)
             }
-            context.fillGlow(0x77777A, [(0, 0.86), (0x70, 0.96), (0, 1)], at: CGPoint(x: center.x, y: center.y + 1.6), radius: 8.6)
-            context.fillGlow(0xE4E2DA, [(0x80, 0), (0x58, 0.55), (0, 1)], at: cross, radius: 4.8)
-            context.fillGlow(0xF0EEE6, [(0xF0, 0), (0xC0, 0.5), (0, 1)], at: CGPoint(x: cross.x, y: cross.y - 2.3), radius: 3.5)
+            context.fillGlow(0x8E8C88, [(0, 0.84), (0x38, 0.93), (0, 1)], at: CGPoint(x: center.x, y: center.y + 1.7), radius: 8.4)
+            context.fillGlow(0xB9B6AE, [(0x50, 0), (0x24, 0.6), (0, 1)], at: cross, radius: 4.4)
+            context.fillGlow(0xE8E5DE, [(0xC8, 0), (0x88, 0.5), (0, 1)], at: CGPoint(x: cross.x, y: cross.y - 2.5), radius: 2.7)
 
-            context.setStrokeColor(cgColor(0x020202))
-            context.setLineWidth(2.4)
+            context.setStrokeColor(cgColor(0x010101))
+            context.setLineWidth(tuning.crossWidth)
             context.setLineCap(.round)
-            context.strokeLineSegments(between: [
-                CGPoint(x: cross.x - arm, y: cross.y), CGPoint(x: cross.x + arm, y: cross.y),
-                CGPoint(x: cross.x, y: cross.y - arm), CGPoint(x: cross.x, y: cross.y + arm),
-            ])
+            // The recess casts the highlight, which stops at its upper edges.
+            context.saveGState()
+            context.clip(to: CGRect(x: ring.minX, y: ring.minY, width: ring.width, height: cross.y + 0.4 - ring.minY))
+            context.setShadow(
+                offset: CGSize(width: 0, height: tuning.highlightRise * scale), blur: tuning.highlightBlur * scale,
+                color: cgColor(0xF2EFE8, alpha: tuning.highlightAlpha))
+            context.strokeLineSegments(between: recess)
+            context.restoreGState()
+            context.strokeLineSegments(between: recess)
 
-            context.setFillColor(cgColor(0xD8D6CE, alpha: 0xB0))
-            context.fillEllipse(in: CGRect(x: center.x - 1.2, y: center.y + 4.3, width: 2.4, height: 1))
+            context.translateBy(x: center.x, y: center.y + tuning.glintDrop)
+            context.scaleBy(x: 1, y: 0.6)
+            context.fillGlow(0xCFCCC4, [(0xA8, 0), (0x70, 0.5), (0, 1)], at: .zero, radius: tuning.glintRadius)
             context.restoreGState()
         }
     }
