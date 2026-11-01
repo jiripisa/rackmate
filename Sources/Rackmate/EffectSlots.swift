@@ -200,6 +200,8 @@ private struct SlotName: View {
     /// The bars span 14 of the art's 17 units and end 2 above its bottom, so at this side they stand
     /// exactly as tall as the capitals, on the same baseline.
     private static let pictureSide: CGFloat = 15.5
+    /// Where the bars end, from the picture's top, on a whole pixel so both edges meet the capitals.
+    private static let pictureBaseline: CGFloat = 13.5
 
     let look: EffectLook
 
@@ -208,7 +210,7 @@ private struct SlotName: View {
         HStack(alignment: .firstTextBaseline, spacing: 7) {
             if look.showsPicture {
                 PluginGlyph(kind: .slot, slotSide: Self.pictureSide)
-                    .alignmentGuide(.firstTextBaseline) { $0[.bottom] - Self.pictureSide * 2 / 17 }
+                    .alignmentGuide(.firstTextBaseline) { _ in Self.pictureBaseline }
             }
             Text(look.name)
                 .font(.panelDisplay(Self.fontSize))
