@@ -259,27 +259,15 @@ struct ChannelUnit: View {
     // MARK: - Effects
 
     private var effects: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 0) {
             Legend("Effects")
-            ForEach(Array(channel.effects.enumerated()), id: \.offset) { _, row in
-                EffectRow(channel: channel, row: row)
-            }
-            Button { model.beginAddEffect(channel: channel.id) } label: {
-                Text("Add effect")
-                    .font(.panelText(12.5))
-                    .foregroundStyle(Color.muted)
-                    .padding(.vertical, 4)
-                    .padding(.horizontal, 7)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .overlay(Rectangle().strokeBorder(Color.line, style: StrokeStyle(lineWidth: 1, dash: [3, 2])))
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
+            EffectChainView(channel: channel)
         }
         .padding(.horizontal, 13)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .overlay(alignment: .leading) { Rectangle().fill(Color.line).frame(width: 1) }
         .overlay(alignment: .trailing) { Rectangle().fill(Color.line).frame(width: 1) }
+        .reportsFrame(of: .area(channel: channel.id))
     }
 
     // MARK: - Output

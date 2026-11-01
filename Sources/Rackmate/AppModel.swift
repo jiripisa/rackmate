@@ -425,6 +425,20 @@ final class AppModel {
         }
     }
 
+    /// The switch on an effect, and its line in the menu.
+    func setEffect(channel: UUID, effect: UUID, isOn: Bool) {
+        editChannel(channel) { $0.setEffect(effectID: effect, isOn: isOn) }
+    }
+
+    /// Moves an effect to where a drag ended. A move that changes nothing is not an edit. The plugin
+    /// keeps running, but its window belongs to the channel it leaves, so that one closes first, the
+    /// way the owner closes it, and a change made in it is kept.
+    func moveEffect(_ effect: UUID, to drop: EffectDrop) {
+        guard var moved = session?.configuration, let from = moved.location(of: effect), moved.moveEffect(effect, to: drop) else { return }
+        if moved.location(of: effect) != from { pluginWindows.close(at: from) }
+        edit { $0.moveEffect(effect, to: drop) }
+    }
+
     // MARK: - Menus
 
     func closeMenu() {
@@ -467,13 +481,14 @@ final class AppModel {
         let hasSidechain = knownCapabilities(of: effect.slot.plugin)?.hasSidechain ?? (effect.sidechainIn != nil)
         let entries = PluginMenus.effect(
             rowSize: channel.effects[rowIndex].count, rowIndex: rowIndex, isOpen: pluginWindows.isOpen(channel: id, effect: effectID),
-            isHosted: hostedPlugin(at: location) != nil, presetLabel: presetLabel(for: effect.slot),
-            sidechain: hasSidechain ? effect.sidechainIn?.label(prefix: "In") ?? "Off" : nil,
+            isHosted: hostedPlugin(at: location) != nil, isOn: effect.isOn, isFailed: audio?.runner?.failure(effect: effectID) != nil,
+            presetLabel: presetLabel(for: effect.slot), sidechain: hasSidechain ? effect.sidechainIn?.label(prefix: "In") ?? "Off" : nil,
             followsTransport: effect.followsTransport
         )
         showMenu(entries, anchor: anchor) { [weak self] action in
             switch action {
             case .togglePlugin: self?.pluginWindows.toggle(channel: id, effect: effectID)
+            case .toggleEffect: self?.setEffect(channel: id, effect: effectID, isOn: !effect.isOn)
             case .presets: self?.showPresetMenu(channel: id, effect: effectID, anchor: anchor)
             case .sidechain: self?.showSidechainMenu(channel: id, effect: effectID, anchor: anchor)
             case .toggleFollowsTransport: self?.edit { $0.updateSlot(at: location) { $0.followsTransport = !effect.followsTransport } }

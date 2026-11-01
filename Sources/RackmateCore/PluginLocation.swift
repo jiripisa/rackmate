@@ -19,6 +19,11 @@ extension Channel {
 }
 
 extension Configuration {
+    /// Where the effect sits now.
+    public func location(of effect: UUID) -> PluginLocation? {
+        channels.first { $0.row(of: effect) != nil }.map { PluginLocation(channel: $0.id, effect: effect) }
+    }
+
     public func slot(at location: PluginLocation) -> PluginSlot? {
         guard let channel = channels.first(where: { $0.id == location.channel }) else { return nil }
         guard let effect = location.effect else { return channel.slot }

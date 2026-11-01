@@ -6,6 +6,39 @@ struct PanelLayoutTests {
     private let window = CGSize(width: 1280, height: 760)
     private let menu = CGSize(width: 320, height: 200)
 
+    @Test func aStageGrowsUpToItsMaximum() {
+        #expect(PanelLayout.stageWidths(isParallel: [false], in: 500) == [240])
+        #expect(PanelLayout.stageWidths(isParallel: [true], in: 500) == [280])
+    }
+
+    @Test func stagesShareTheRoomEvenlyWhileTheyGrow() {
+        #expect(PanelLayout.stageWidths(isParallel: [false, false], in: 400) == [200, 200])
+        #expect(PanelLayout.stageWidths(isParallel: [false, true], in: 420) == [190, 230])
+    }
+
+    @Test func aStageAtItsMaximumLeavesTheRoomToTheOthers() {
+        #expect(PanelLayout.stageWidths(isParallel: [false, true], in: 1000) == [240, 280])
+        #expect(PanelLayout.stageWidths(isParallel: [false, true], in: 510) == [235, 275])
+        #expect(PanelLayout.stageWidths(isParallel: [false, true], in: 530) == [240, 280])
+    }
+
+    @Test func stagesGiveWayInProportionToTheirBasis() {
+        let widths = PanelLayout.stageWidths(isParallel: [false, true], in: 306)
+        #expect(widths == [135, 171])
+    }
+
+    @Test func aStageAtItsMinimumLeavesTheShortfallToTheOthers() {
+        #expect(PanelLayout.stageWidths(isParallel: [false, false, true], in: 391) == [120, 120, 151])
+    }
+
+    @Test func stagesThatDoNotFitStayAtTheirMinimum() {
+        #expect(PanelLayout.stageWidths(isParallel: [false, true], in: 100) == [120, 150])
+    }
+
+    @Test func noStagesTakeNoRoom() {
+        #expect(PanelLayout.stageWidths(isParallel: [], in: 500).isEmpty)
+    }
+
     @Test func aMenuOpensUnderItsAnchor() {
         let anchor = CGRect(x: 43, y: 188, width: 164, height: 22)
         #expect(PanelLayout.menuOrigin(anchor: anchor, menu: menu, window: window) == CGPoint(x: 43, y: 214))

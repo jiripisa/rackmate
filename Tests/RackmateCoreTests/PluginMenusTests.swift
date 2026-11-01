@@ -25,11 +25,12 @@ struct PluginMenusTests {
     }
 
     private func effectMenu(
-        rowSize: Int = 1, rowIndex: Int = 0, isOpen: Bool = false, isHosted: Bool = true, sidechain: String? = nil, followsTransport: Bool = true
+        rowSize: Int = 1, rowIndex: Int = 0, isOpen: Bool = false, isHosted: Bool = true, isOn: Bool = true, isFailed: Bool = false,
+        sidechain: String? = nil, followsTransport: Bool = true
     ) -> [MenuEntry<EffectMenuAction>] {
         PluginMenus.effect(
-            rowSize: rowSize, rowIndex: rowIndex, isOpen: isOpen, isHosted: isHosted, presetLabel: "Default sound", sidechain: sidechain,
-            followsTransport: followsTransport
+            rowSize: rowSize, rowIndex: rowIndex, isOpen: isOpen, isHosted: isHosted, isOn: isOn, isFailed: isFailed, presetLabel: "Default sound",
+            sidechain: sidechain, followsTransport: followsTransport
         )
     }
 
@@ -39,7 +40,20 @@ struct PluginMenusTests {
     }
 
     @Test func anEffectAloneInItsRowCanGoParallelButNotToSeries() {
-        #expect(titles(effectMenu()) == ["Open plugin", "Presets: Default sound", "Follow Start/Stop: On", "---", "Add parallel effect", "Remove"])
+        #expect(titles(effectMenu()) == ["Open plugin", "Turn effect off", "Presets: Default sound", "Follow Start/Stop: On", "---", "Add parallel effect", "Remove"])
+    }
+
+    @Test func anEffectMenuOffersTurningOff() {
+        #expect(effectMenu()[1] == .item("Turn effect off", action: .toggleEffect))
+    }
+
+    @Test func anOffEffectMenuOffersTurningOn() {
+        #expect(effectMenu(isOn: false)[1] == .item("Turn effect on", action: .toggleEffect))
+    }
+
+    @Test func aFailedEffectOffersOnlyRemove() {
+        let menu = effectMenu(rowSize: 2, isHosted: false, isFailed: true, sidechain: "Off")
+        #expect(menu == [.item("Remove", action: .remove)])
     }
 
     @Test func anOpenWindowOffersToCloseIt() {
@@ -47,22 +61,22 @@ struct PluginMenusTests {
     }
 
     @Test func aRowOfTwoOffersBothWays() {
-        #expect(titles(effectMenu(rowSize: 2)) == ["Open plugin", "Presets: Default sound", "Follow Start/Stop: On", "---", "Add parallel effect", "Move to series", "Remove"])
+        #expect(titles(effectMenu(rowSize: 2)) == ["Open plugin", "Turn effect off", "Presets: Default sound", "Follow Start/Stop: On", "---", "Add parallel effect", "Move to series", "Remove"])
     }
 
     @Test func aFullRowTakesNoMoreEffects() {
-        #expect(titles(effectMenu(rowSize: Channel.maxParallel)) == ["Open plugin", "Presets: Default sound", "Follow Start/Stop: On", "---", "Move to series", "Remove"])
+        #expect(titles(effectMenu(rowSize: Channel.maxParallel)) == ["Open plugin", "Turn effect off", "Presets: Default sound", "Follow Start/Stop: On", "---", "Move to series", "Remove"])
     }
 
     @Test func aPluginWithASidechainShowsItsInput() {
-        #expect(titles(effectMenu(sidechain: "Off"))[2] == "Sidechain in: Off")
-        #expect(titles(effectMenu(sidechain: "In 3–4"))[2] == "Sidechain in: In 3–4")
+        #expect(titles(effectMenu(sidechain: "Off"))[3] == "Sidechain in: Off")
+        #expect(titles(effectMenu(sidechain: "In 3–4"))[3] == "Sidechain in: In 3–4")
     }
 
     @Test func followStartStopComesAfterPresetsAndSidechainAndShowsTheSwitch() {
-        #expect(titles(effectMenu(sidechain: "Off"))[1...3] == ["Presets: Default sound", "Sidechain in: Off", "Follow Start/Stop: On"])
-        #expect(titles(effectMenu(followsTransport: false))[2] == "Follow Start/Stop: Off")
-        #expect(effectMenu()[2] == .item("Follow Start/Stop: On", action: .toggleFollowsTransport))
+        #expect(titles(effectMenu(sidechain: "Off"))[2...4] == ["Presets: Default sound", "Sidechain in: Off", "Follow Start/Stop: On"])
+        #expect(titles(effectMenu(followsTransport: false))[3] == "Follow Start/Stop: Off")
+        #expect(effectMenu()[3] == .item("Follow Start/Stop: On", action: .toggleFollowsTransport))
     }
 
     @Test func addParallelNamesTheRow() {
@@ -75,6 +89,7 @@ struct PluginMenusTests {
     @Test func aPluginThatDoesNotRunCanOnlyBeMovedOrRemoved() {
         let menu = effectMenu(rowSize: 2, isHosted: false, sidechain: "Off")
         #expect(isEnabled("Open plugin", in: menu) == false)
+        #expect(isEnabled("Turn effect off", in: menu) == true)
         #expect(isEnabled("Presets: Default sound", in: menu) == false)
         #expect(isEnabled("Sidechain in: Off", in: menu) == true)
         #expect(isEnabled("Follow Start/Stop: On", in: menu) == true)

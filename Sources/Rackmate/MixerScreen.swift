@@ -7,6 +7,8 @@ import SwiftUI
 struct MixerScreen: View {
     let model: AppModel
 
+    @State private var effectDrag = EffectDrag()
+
     var body: some View {
         VStack(spacing: 0) {
             TopBar(model: model)
@@ -23,9 +25,16 @@ struct MixerScreen: View {
                     .frame(minHeight: viewport.size.height, alignment: .top)
                 }
                 .scrollBounceBehavior(.basedOnSize)
+                .reportsFrame(of: .rack)
             }
         }
+        .coordinateSpace(.named(EffectDrag.mixerSpace))
+        .overlay(alignment: .topLeading) { EffectDragLayer() }
+        .onPreferenceChange(EffectFramesKey.self) { [effectDrag] frames in
+            MainActor.assumeIsolated { effectDrag.frames = frames }
+        }
         .environment(model)
+        .environment(effectDrag)
     }
 
     private var channels: [Channel] { model.session?.configuration.channels ?? [] }

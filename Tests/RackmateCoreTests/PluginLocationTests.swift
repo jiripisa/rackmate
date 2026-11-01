@@ -12,6 +12,16 @@ struct PluginLocationTests {
         return (.fixture(channels: [first, second]), first, second)
     }
 
+    @Test func anEffectIsLocatedInTheChannelThatHoldsIt() {
+        let (configuration, first, second) = configuration()
+        #expect(configuration.location(of: effect.id) == PluginLocation(channel: first.id, effect: effect.id))
+        #expect(configuration.location(of: other.id) == PluginLocation(channel: second.id, effect: other.id))
+    }
+
+    @Test func anUnknownEffectHasNoLocation() {
+        #expect(configuration().0.location(of: UUID()) == nil)
+    }
+
     @Test func aChannelsPluginIsFoundByChannelAlone() {
         let (configuration, first, _) = configuration()
         #expect(configuration.slot(at: PluginLocation(channel: first.id)) == first.slot)

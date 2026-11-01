@@ -42,6 +42,11 @@ final class PluginWindows {
         Task { await window.show() }
     }
 
+    /// Closes the plugin's window, if it has one open, the way its red button does.
+    func close(at location: PluginLocation) {
+        windows[location]?.close()
+    }
+
     /// Takes the windows off the screen and brings them back where they were. They stay open all the
     /// while, and one that closes in the meantime stays closed.
     func setHidden(_ hidden: Bool) {

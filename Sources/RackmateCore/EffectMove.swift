@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 /// Where a dragged effect lands.
@@ -31,7 +32,66 @@ public enum EffectDropZone {
     }
 }
 
+/// A part of the effects columns whose place on screen a drag has to know.
+public enum EffectPart: Hashable, Sendable {
+    /// What shows of the units, which scroll under the top bar.
+    case rack
+    /// `.effects`: everything a drag can end in for this channel.
+    case area(channel: UUID)
+    /// `.chain`: what shows of the effects, which scroll sideways.
+    case chain(channel: UUID)
+    /// `.add-fx`.
+    case add(channel: UUID)
+    /// `.stage`, by the first effect in it.
+    case stage(first: UUID)
+    /// `.fx`.
+    case slot(UUID)
+}
+
+/// Where a dragged effect would land, and the amber line that shows it.
+public struct EffectLanding: Equatable, Sendable {
+    public var drop: EffectDrop
+    public var mark: CGRect
+
+    public init(drop: EffectDrop, mark: CGRect) {
+        self.drop = drop
+        self.mark = mark
+    }
+}
+
 extension Configuration {
+    /// `dropAt`: what ending a drag of `moving` at `point` would do, nil when it would do nothing.
+    /// `point` and `frames` are in one coordinate space.
+    public func landing(of moving: UUID, at point: CGPoint, frames: [EffectPart: CGRect]) -> EffectLanding? {
+        guard frames[.rack]?.contains(point) == true,
+            let channel = channels.first(where: { frames[.area(channel: $0.id)]?.contains(point) == true })
+        else { return nil }
+        if frames[.chain(channel: channel.id)]?.contains(point) == true {
+            for row in channel.effects {
+                guard let target = row.first(where: { frames[.slot($0.id)]?.contains(point) == true }) else { continue }
+                if target.id == moving { return nil }
+                return landing(of: moving, on: target.id, in: row, at: point, frames: frames)
+            }
+        }
+        guard let add = frames[.add(channel: channel.id)], let chain = frames[.chain(channel: channel.id)] else { return nil }
+        let mark = CGRect(x: min(add.minX - 3, chain.maxX - 2), y: add.minY, width: 2, height: add.height)
+        return EffectLanding(drop: .end(channel: channel.id), mark: mark)
+    }
+
+    private func landing(of moving: UUID, on target: UUID, in row: [InsertEffect], at point: CGPoint, frames: [EffectPart: CGRect]) -> EffectLanding? {
+        guard let slot = frames[.slot(target)], let first = row.first, let stage = frames[.stage(first: first.id)] else { return nil }
+        let drop = EffectDropZone.drop(
+            target: target, across: (point.x - slot.minX) / slot.width, inUpperHalf: point.y < slot.midY,
+            stageHasRoom: stageHasRoom(for: target, moving: moving))
+        let mark = switch drop {
+        case .before: CGRect(x: stage.minX - 4, y: stage.minY, width: 2, height: stage.height)
+        case .after: CGRect(x: stage.maxX + 2, y: stage.minY, width: 2, height: stage.height)
+        case .above: CGRect(x: slot.minX, y: slot.minY - 4, width: slot.width, height: 2)
+        case .below, .end: CGRect(x: slot.minX, y: slot.maxY + 2, width: slot.width, height: 2)
+        }
+        return EffectLanding(drop: drop, mark: mark)
+    }
+
     /// Whether the stage of `target` takes `moving`: it is not full, or `moving` already stands in it.
     public func stageHasRoom(for target: UUID, moving: UUID) -> Bool {
         for channel in channels {

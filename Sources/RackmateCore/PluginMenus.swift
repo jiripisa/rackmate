@@ -49,6 +49,7 @@ public enum ConfigurationMenuAction: Equatable, Sendable {
 
 public enum EffectMenuAction: Equatable, Sendable {
     case togglePlugin
+    case toggleEffect
     case presets
     case sidechain
     case toggleFollowsTransport
@@ -69,11 +70,15 @@ public enum PluginMenus {
 
     /// `sidechain` is what the plugin's sidechain input reads, nil when it has none. A plugin that
     /// does not run has no window and no sound to pick, but its place in the chain can still change.
+    /// One that failed can only go.
     public static func effect(
-        rowSize: Int, rowIndex: Int, isOpen: Bool, isHosted: Bool, presetLabel: String, sidechain: String?, followsTransport: Bool
+        rowSize: Int, rowIndex: Int, isOpen: Bool, isHosted: Bool, isOn: Bool, isFailed: Bool, presetLabel: String, sidechain: String?,
+        followsTransport: Bool
     ) -> [MenuEntry<EffectMenuAction>] {
+        if isFailed { return [.item("Remove", action: .remove)] }
         var entries: [MenuEntry<EffectMenuAction>] = [
             .item(isOpen ? "Close plugin" : "Open plugin", action: .togglePlugin, isEnabled: isHosted),
+            .item(isOn ? "Turn effect off" : "Turn effect on", action: .toggleEffect),
             .item("Presets: \(presetLabel)", action: .presets, isEnabled: isHosted),
         ]
         if let sidechain { entries.append(.item("Sidechain in: \(sidechain)", action: .sidechain)) }
