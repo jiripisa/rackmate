@@ -5,13 +5,13 @@
     <link>https://jiripisa.github.io/rackmate/</link>
     <description>Rackmate updates</description>
     <item>
-      <title>Rackmate 1.1.1</title>
-      <sparkle:version>1.1.1</sparkle:version>
-      <sparkle:shortVersionString>1.1.1</sparkle:shortVersionString>
+      <title>Rackmate 1.1.2</title>
+      <sparkle:version>1.1.2</sparkle:version>
+      <sparkle:shortVersionString>1.1.2</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-      <pubDate>Sun, 01 Nov 2026 22:00:07 +0000</pubDate>
-      <description><![CDATA[<ul><li>Effects of type <code>aumf</code>, which include Arturia&#x27;s, are now in the Effects list and can go in a channel&#x27;s chain. They stay in the Instruments list too, since vocoders use that type.</li><li>The second input of such a plugin now shows as Sidechain in.</li></ul>]]></description>
-      <enclosure url="https://github.com/jiripisa/rackmate/releases/download/v1.1.1/Rackmate-1.1.1.dmg" type="application/octet-stream" sparkle:edSignature="pyz/9ju8znGoHVj4hyvZWK7Mr2qD+dUWH92hKkdqQI1Rc0hVbbKPlrMtvuru1I6mGI4mIA+vZFlHhCOKfS3lDA==" length="7255022"/>
+      <pubDate>Sun, 01 Nov 2026 22:12:22 +0000</pubDate>
+      <description><![CDATA[<ul><li>Plugins protected by iLok, such as Zen Delay Virtual, no longer close the app when they load.</li></ul>]]></description>
+      <enclosure url="https://github.com/jiripisa/rackmate/releases/download/v1.1.2/Rackmate-1.1.2.dmg" type="application/octet-stream" sparkle:edSignature="mI5A8NFEyAzmNw2hHbZNr80ZnqBviWf3M6VwQzDiVsnb0CcS4UiYCRxeUG4LySXKEt8h9yR+M9ztOApKJ44pDw==" length="7255175"/>
     </item>
   </channel>
 </rss>
