@@ -22,14 +22,36 @@ private let vasc = PluginID(type: "aumu", subtype: "VasC", manufacturer: "RoCl")
     #expect(store.loadAll().map(\.name) == ["A", "c"])
 }
 
-@Test func deleteRemovesConfigurationAndUnknownIdIsNoOp() throws {
-    let store = ConfigurationStore(directory: try tempDir())
-    let config = Configuration.fixture(name: "X")
-    try store.save(config)
-    try store.delete(id: UUID())
-    #expect(store.loadAll().count == 1)
-    try store.delete(id: config.id)
+@Test func aRackGoesToTheTrash() throws {
+    let dir = try tempDir()
+    var trashed: [URL] = []
+    let store = ConfigurationStore(directory: dir, trash: { url in
+        trashed.append(url)
+        try FileManager.default.removeItem(at: url)
+    })
+    let rack = Configuration.fixture(name: "X")
+    try store.save(rack)
+    try store.moveToTrash(id: rack.id)
+    #expect(trashed.map(\.lastPathComponent) == ["\(rack.id.uuidString).json"])
     #expect(store.loadAll().isEmpty)
+}
+
+@Test func anUnknownRackGoesNowhere() throws {
+    let dir = try tempDir()
+    var calls = 0
+    let store = ConfigurationStore(directory: dir, trash: { _ in calls += 1 })
+    try store.moveToTrash(id: UUID())
+    #expect(calls == 0)
+}
+
+@Test func aRackThatCannotBeTrashedStays() throws {
+    struct NoTrash: Error {}
+    let dir = try tempDir()
+    let store = ConfigurationStore(directory: dir, trash: { _ in throw NoTrash() })
+    let rack = Configuration.fixture(name: "X")
+    try store.save(rack)
+    #expect(throws: NoTrash.self) { try store.moveToTrash(id: rack.id) }
+    #expect(store.loadAll().map(\.name) == ["X"])
 }
 
 @Test func savingPresetWithSameNameReplaces() throws {

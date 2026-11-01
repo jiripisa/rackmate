@@ -204,7 +204,7 @@ struct ConfigurationMenuTests {
     @Test func marksTheCurrentConfigurationAndKeepsTheRest() {
         let first = Configuration.fixture(name: "First")
         let second = Configuration.fixture(name: "Second")
-        let entries = PluginMenus.configurations([first, second], current: second.id)
+        let entries = PluginMenus.configurations([first, second], current: second.id, canDelete: true)
         #expect(entries == [
             .legend("Load rack"),
             .item("First", action: .load(first.id), isCurrent: false),
@@ -212,6 +212,13 @@ struct ConfigurationMenuTests {
             .separator,
             .item("New rack", action: .new),
             .item("Save as", action: .saveAs),
+            .separator,
+            .item("Delete rack", action: .delete),
         ])
+    }
+
+    @Test func aRackNeverSavedCannotBeDeleted() {
+        let entries = PluginMenus.configurations([], current: nil, canDelete: false)
+        #expect(entries.last == .item("Delete rack", action: .delete, isEnabled: false))
     }
 }

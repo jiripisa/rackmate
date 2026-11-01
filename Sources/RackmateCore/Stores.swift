@@ -83,9 +83,14 @@ public struct Preset: Codable, Equatable, Sendable {
 /// One JSON file per configuration, named by its UUID.
 public final class ConfigurationStore {
     private let directory: URL
+    private let trash: (URL) throws -> Void
 
-    public init(directory: URL) {
+    public init(
+        directory: URL,
+        trash: @escaping (URL) throws -> Void = { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) }
+    ) {
         self.directory = directory
+        self.trash = trash
     }
 
     private func file(for id: UUID) -> URL {
@@ -103,11 +108,11 @@ public final class ConfigurationStore {
         try write(configuration, to: file(for: configuration.id))
     }
 
-    /// Deleting an unknown ID does nothing.
-    public func delete(id: UUID) throws {
+    /// To the Trash and not gone, so a rack deleted by mistake can be put back. An unknown ID does nothing.
+    public func moveToTrash(id: UUID) throws {
         let url = file(for: id)
         guard FileManager.default.fileExists(atPath: url.path) else { return }
-        try FileManager.default.removeItem(at: url)
+        try trash(url)
     }
 }
 

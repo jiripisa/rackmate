@@ -45,6 +45,7 @@ public enum ConfigurationMenuAction: Equatable, Sendable {
     case load(UUID)
     case new
     case saveAs
+    case delete
 }
 
 public enum EffectMenuAction: Equatable, Sendable {
@@ -110,11 +111,15 @@ public enum PluginMenus {
         return entries
     }
 
-    /// The configurations to load, the current one marked, then New rack and Save as.
-    public static func configurations(_ configurations: [Configuration], current: UUID?) -> [MenuEntry<ConfigurationMenuAction>] {
+    /// The configurations to load, the current one marked, then New rack and Save as, then Delete rack
+    /// apart from them. A rack never saved has nothing to delete.
+    public static func configurations(_ configurations: [Configuration], current: UUID?, canDelete: Bool) -> [MenuEntry<ConfigurationMenuAction>] {
         [.legend("Load rack")]
             + configurations.map { .item($0.name, action: .load($0.id), isCurrent: $0.id == current) }
-            + [.separator, .item("New rack", action: .new), .item("Save as", action: .saveAs)]
+            + [
+                .separator, .item("New rack", action: .new), .item("Save as", action: .saveAs),
+                .separator, .item("Delete rack", action: .delete, isEnabled: canDelete),
+            ]
     }
 
     /// Off, then the device's inputs. A sidechain the configuration holds stays listed.

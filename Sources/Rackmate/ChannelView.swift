@@ -309,7 +309,7 @@ struct ChannelUnit: View {
 }
 
 /// `.remove`: muted until hovered.
-private struct RemoveButtonStyle: ButtonStyle {
+struct RemoveButtonStyle: ButtonStyle {
     func makeBody(configuration: ButtonStyleConfiguration) -> some View {
         Hovering { isHovered in
             configuration.label.foregroundStyle(isHovered ? Color.legend : Color.muted)

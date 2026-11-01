@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Delete a rack: the × on its row on the Start screen, or Delete rack in the rack menu. It goes to the Trash, and its presets stay.
+
 ## 1.0.0 — 2026-11-01
 
 - Each channel shows the plugin's maker above its name.
