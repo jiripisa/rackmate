@@ -9,6 +9,7 @@
 - Effects run left to right. Each has an on and off switch, saved with the rack. Drag an effect beside another to run it in series, or under it to run it in parallel, also into another channel.
 - Hold a dragged effect near the rack's top or bottom edge and the rack scrolls, so a drag can reach a channel out of view.
 - The window is now at least 1200 points wide.
+- The app icon fills its whole shape instead of sitting small on a light plate.
 
 ## 0.1.0 — 2026-11-01
 

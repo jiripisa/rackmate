@@ -2,7 +2,8 @@
 
 ## 1. Toolchain & Project Layout
 
-- Xcode command line tools (Swift 6), macOS 15+. No Xcode project: Swift
+- Xcode (Swift 6), macOS 15+. The Command Line Tools alone are not enough,
+  because `actool`, which compiles the app icon, comes with Xcode. No Xcode project: Swift
   Package Manager builds the code, `build.sh` assembles the `.app` bundle.
 
 ```
@@ -11,7 +12,7 @@ rackmate/
 ├── Sources/Rackmate/          # SwiftUI app (thin layer)
 ├── Sources/RackmateCore/      # logic without UI, tested
 ├── Tests/RackmateCoreTests/   # Swift Testing
-├── Resources/               # Info.plist, entitlements, AppIcon.png (1024 px), Logo.png
+├── Resources/               # Info.plist, entitlements, AppIcon.icon, AppIcon.png, Logo.png
 ├── build.sh                 # debug | release | dist | clean
 └── run.sh                   # debug (logs in terminal) | release (open .app)
 ```
@@ -28,7 +29,8 @@ rackmate/
 ### 2.1 App-bundle assembly (all modes)
 
 Executable → `Contents/MacOS`, `Resources/Info.plist` → `Contents/`,
-`Resources/AppIcon.png` → `AppIcon.icns` (sips + iconutil), `Resources/Logo.png`
+`Resources/AppIcon.icon` → `Assets.car` and `AppIcon.icns` (actool, which needs
+Xcode; the build fails without it), `Resources/Logo.png`
 → `Contents/Resources`, Sparkle.framework →
 `Contents/Frameworks` (XPC services removed; the app is unsandboxed), PkgInfo,
 then an ad-hoc signature with the entitlements. New resource files must be
