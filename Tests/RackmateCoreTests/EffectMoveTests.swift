@@ -245,4 +245,17 @@ struct EffectLandingTests {
         frames[.chain(channel: first)] = CGRect(x: 110, y: 70, width: 300, height: 100)
         #expect(landing(150, 60, frames: frames)?.mark == CGRect(x: 408, y: 100, width: 2, height: 34))
     }
+
+    /// The top of a unit can be scrolled under the top bar while the pointer is on the rest of it.
+    @Test func theLineStaysInARackWhosePlusIsScrolledOverTheTop() {
+        var frames = frames
+        frames[.rack] = CGRect(x: 0, y: 140, width: 1000, height: 410)
+        #expect(landing(150, 160, frames: frames) == EffectLanding(drop: .end(channel: first), mark: CGRect(x: 517, y: 140, width: 2, height: 34)))
+    }
+
+    @Test func theLineStaysInARackWhosePlusIsScrolledUnderTheBottom() {
+        var frames = frames
+        frames[.rack] = CGRect(x: 0, y: 50, width: 1000, height: 70)
+        #expect(landing(150, 60, frames: frames)?.mark == CGRect(x: 517, y: 86, width: 2, height: 34))
+    }
 }

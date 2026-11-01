@@ -63,9 +63,16 @@ extension Configuration {
     /// `dropAt`: what ending a drag of `moving` at `point` would do, nil when it would do nothing.
     /// `point` and `frames` are in one coordinate space.
     public func landing(of moving: UUID, at point: CGPoint, frames: [EffectPart: CGRect]) -> EffectLanding? {
-        guard frames[.rack]?.contains(point) == true,
-            let channel = channels.first(where: { frames[.area(channel: $0.id)]?.contains(point) == true })
+        guard let rack = frames[.rack], rack.contains(point),
+            let channel = channels.first(where: { frames[.area(channel: $0.id)]?.contains(point) == true }),
+            var landing = landing(of: moving, in: channel, at: point, frames: frames)
         else { return nil }
+        // The top of a unit can be scrolled under the top bar, and the bottom off the rack.
+        landing.mark.origin.y = max(rack.minY, min(landing.mark.minY, rack.maxY - landing.mark.height))
+        return landing
+    }
+
+    private func landing(of moving: UUID, in channel: Channel, at point: CGPoint, frames: [EffectPart: CGRect]) -> EffectLanding? {
         if frames[.chain(channel: channel.id)]?.contains(point) == true {
             for row in channel.effects {
                 guard let target = row.first(where: { frames[.slot($0.id)]?.contains(point) == true }) else { continue }
