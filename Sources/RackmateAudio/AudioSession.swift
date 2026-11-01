@@ -270,7 +270,7 @@ public final class AudioSession {
         router.setRoutes(
             wanted.channels.compactMap { channel in
                 guard let route = channel.midiIn, let slot = runner.midiSlot(channel: channel.id) else { return nil }
-                return MIDIRouteTarget(route: route, slot: slot)
+                return MIDIRouteTarget(route: route, slot: slot, channel: channel.id)
             })
     }
 }

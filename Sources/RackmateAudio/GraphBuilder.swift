@@ -41,8 +41,9 @@ struct GraphBuilder {
     var deviceOutputs: Int
 
     /// A channel gets a strip when its unit is loaded and its output exists. `units` holds the
-    /// loaded units by channel or effect ID. An effect without a unit is left out, so the signal
-    /// passes by it, and an input that does not exist is off.
+    /// loaded units by channel or effect ID. An effect without a unit or one that is off is left out, so
+    /// the signal passes by it, and an input that does not exist is off. A stage left empty goes, and
+    /// a channel with no stage left plays dry.
     func strips(for channels: [Channel], units: [UUID: GraphUnit], midiSlots: [UUID: Int32]) -> [GraphStrip] {
         channels.compactMap { channel in
             guard let source = units[channel.id], exists(channel.audioOut, among: deviceOutputs) else { return nil }
@@ -52,7 +53,7 @@ struct GraphBuilder {
                 audioIn: existingInput(channel.audioIn),
                 sidechain: existingInput(channel.sidechainIn),
                 rows: channel.effects.compactMap { row in
-                    let effects = row.compactMap { effect in
+                    let effects = row.filter(\.isOn).compactMap { effect in
                         units[effect.id].map { GraphEffect(unit: $0, sidechain: existingInput(effect.sidechainIn)) }
                     }
                     return effects.isEmpty ? nil : effects
@@ -64,9 +65,10 @@ struct GraphBuilder {
     }
 
     /// The label of the first route of `channel` that does not exist on the device, output first.
+    /// An effect that is off needs no input.
     func missingRoute(of channel: Channel) -> String? {
         if !exists(channel.audioOut, among: deviceOutputs) { return channel.audioOut.label(prefix: "Out") }
-        let inputs = [channel.audioIn, channel.sidechainIn] + channel.effects.joined().map(\.sidechainIn)
+        let inputs = [channel.audioIn, channel.sidechainIn] + channel.effects.joined().filter(\.isOn).map(\.sidechainIn)
         return inputs.lazy.compactMap { $0 }.first { !exists($0, among: deviceInputs) }?.label(prefix: "In")
     }
 

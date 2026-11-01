@@ -20,8 +20,8 @@ private func channel(
     Channel(kind: .effect, slot: slot, audioIn: audioIn, sidechainIn: sidechainIn, audioOut: audioOut, effects: effects)
 }
 
-private func effect(sidechainIn: AudioChannels? = nil) -> InsertEffect {
-    InsertEffect(slot: slot, sidechainIn: sidechainIn)
+private func effect(sidechainIn: AudioChannels? = nil, isOn: Bool = true) -> InsertEffect {
+    InsertEffect(slot: slot, sidechainIn: sidechainIn, isOn: isOn)
 }
 
 @Suite("Graph builder")
@@ -93,6 +93,66 @@ struct GraphBuilderTests {
         ])
     }
 
+    @Test("An effect that is off leaves a series chain")
+    func anOffEffectInSeriesLeavesTheChain() {
+        let before = effect()
+        let off = effect(isOn: false)
+        let after = effect()
+        let source = channel(effects: [[before], [off], [after]])
+        let strips = builder.strips(
+            for: [source], units: [source.id: fakeUnit(16), before.id: fakeUnit(32), off.id: fakeUnit(48), after.id: fakeUnit(64)], midiSlots: [:]
+        )
+        #expect(strips.first?.rows == [
+            [GraphEffect(unit: fakeUnit(32), sidechain: nil)],
+            [GraphEffect(unit: fakeUnit(64), sidechain: nil)],
+        ])
+    }
+
+    @Test("An effect that is off leaves its parallel stage")
+    func anOffEffectLeavesItsParallelStage() {
+        let kept = effect()
+        let off = effect(isOn: false)
+        let source = channel(effects: [[kept, off]])
+        let strips = builder.strips(for: [source], units: [source.id: fakeUnit(16), kept.id: fakeUnit(32), off.id: fakeUnit(48)], midiSlots: [:])
+        #expect(strips.first?.rows == [[GraphEffect(unit: fakeUnit(32), sidechain: nil)]])
+    }
+
+    @Test("A stage whose effects are all off is dropped")
+    func aStageAllOffIsDropped() {
+        let first = effect(isOn: false)
+        let second = effect(isOn: false)
+        let kept = effect()
+        let source = channel(effects: [[first, second], [kept]])
+        let strips = builder.strips(
+            for: [source], units: [source.id: fakeUnit(16), first.id: fakeUnit(32), second.id: fakeUnit(48), kept.id: fakeUnit(64)], midiSlots: [:]
+        )
+        #expect(strips.first?.rows == [[GraphEffect(unit: fakeUnit(64), sidechain: nil)]])
+    }
+
+    @Test("A channel with every effect off keeps its strip and plays dry")
+    func aChannelWithEveryEffectOffPlaysDry() {
+        let first = effect(isOn: false)
+        let second = effect(isOn: false)
+        let source = channel(effects: [[first], [second]])
+        let strips = builder.strips(for: [source], units: [source.id: fakeUnit(16), first.id: fakeUnit(32), second.id: fakeUnit(48)], midiSlots: [:])
+        #expect(strips.count == 1)
+        #expect(strips.first?.rows == [])
+    }
+
+    @Test("Strips keep their order when effects go off")
+    func stripOrderDoesNotChangeWhenEffectsGoOff() {
+        var first = channel(effects: [[effect()]])
+        let second = channel()
+        let third = channel()
+        let units = [first.id: fakeUnit(16), first.effects[0][0].id: fakeUnit(32), second.id: fakeUnit(48), third.id: fakeUnit(64)]
+        let on = builder.strips(for: [first, second, third], units: units, midiSlots: [:])
+        first.effects[0][0].isOn = false
+        let off = builder.strips(for: [first, second, third], units: units, midiSlots: [:])
+        #expect(on.map(\.channel) == off.map(\.channel))
+        #expect(on[0].rows.count == 1 && off[0].rows.isEmpty)
+        #expect(Array(on.dropFirst()) == Array(off.dropFirst()))
+    }
+
     @Test("The output is reported first, then the inputs in signal order")
     func missingRouteOrder() {
         let insertBeyond = effect(sidechainIn: .mono(6))
@@ -103,6 +163,7 @@ struct GraphBuilderTests {
         #expect(builder.missingRoute(of: channel(audioIn: .stereo(left: 3, right: 4))) == "In 4–5")
         #expect(builder.missingRoute(of: channel(sidechainIn: .mono(5), effects: [[insertBeyond]])) == "In 6")
         #expect(builder.missingRoute(of: channel(effects: [[effect()], [effect(), insertBeyond]])) == "In 7")
+        #expect(builder.missingRoute(of: channel(effects: [[effect(sidechainIn: .mono(6), isOn: false)]])) == nil)
     }
 
     @Test("C strips hold every value and point at their own rows")

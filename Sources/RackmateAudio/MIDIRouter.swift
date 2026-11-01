@@ -15,14 +15,17 @@ private let allSoundOff: UInt8 = 120
 private let allNotesOff: UInt8 = 123
 private let midiChannels: ClosedRange<UInt8> = 0...15
 
-/// Where the events of one route go.
+/// Where the events of one route go, and whose they are.
 public struct MIDIRouteTarget: Equatable, Sendable {
     public var route: MIDIRoute
     public var slot: Int32
+    /// The channel the route belongs to, for `eventCount`.
+    public var channel: UUID
 
-    public init(route: MIDIRoute, slot: Int32) {
+    public init(route: MIDIRoute, slot: Int32, channel: UUID) {
         self.route = route
         self.slot = slot
+        self.channel = channel
     }
 }
 
@@ -92,6 +95,13 @@ public final class MIDIRouter {
     public func setRoutes(_ routes: [MIDIRouteTarget]) {
         guard !isClosed else { return }
         routing.setRoutes(routes)
+    }
+
+    /// How many channel-voice messages the routes have delivered to `channel` since it got its first
+    /// route. Only ever grows while the channel keeps a route; zero for a channel without one. A
+    /// message that reaches two channels counts for both, and the count says nothing of the message.
+    public func eventCount(channel: UUID) -> UInt64 {
+        routing.eventCount(channel: channel)
     }
 
     /// Follows the clock of the source called `name`, and of nothing when it is nil. A new source
@@ -166,6 +176,9 @@ private final class MIDIRouting: Sendable {
 
     private struct State {
         var routes: [MIDIRouteTarget] = []
+        /// One entry per channel with a route, made when the routes are set, so counting on the
+        /// CoreMIDI thread changes a value in place and allocates nothing.
+        var eventCounts: [UUID: UInt64] = [:]
         var clockSource: String?
         /// Only `handle` gives it ticks. The main actor replaces it whole with a new one, reads
         /// `reading` and stops a stranded transport, so the CoreMIDI thread owns its tick storage and
@@ -195,6 +208,7 @@ private final class MIDIRouting: Sendable {
             if case .channelVoice(let status, let data1, let data2) = event {
                 for target in state.routes where isSameName(target.route.sourceName, source) && target.route.channel.matches(status: status) {
                     pr_engine_push_midi(engine, target.slot, status, data1, data2)
+                    state.eventCounts[target.channel, default: 0] &+= 1
                 }
             } else if let clockSource = state.clockSource, isSameName(clockSource, source) {
                 state.tracker.receive(event, at: seconds)
@@ -208,12 +222,20 @@ private final class MIDIRouting: Sendable {
 
     func setRoutes(_ routes: [MIDIRouteTarget]) {
         var replaced = routes
+        var counts = Dictionary(routes.map { ($0.channel, UInt64(0)) }, uniquingKeysWith: { first, _ in first })
         state.withLock { state in
+            // A channel that keeps a route keeps its count. Only values move here, nothing is made.
+            for target in routes { counts[target.channel] = state.eventCounts[target.channel] ?? 0 }
+            swap(&state.eventCounts, &counts)
             swap(&state.routes, &replaced)
             for target in replaced where !state.routes.contains(target) {
                 pushAllOff(slot: target.slot)
             }
         }
+    }
+
+    func eventCount(channel: UUID) -> UInt64 {
+        state.withLock { $0.eventCounts[channel] ?? 0 }
     }
 
     /// 32 messages, far less than a ring holds. Only under the lock.
@@ -250,8 +272,10 @@ private final class MIDIRouting: Sendable {
     /// Past this, no event reaches the engine, not even one already on its way.
     func close() {
         var replaced: [MIDIRouteTarget] = []
+        var counts: [UUID: UInt64] = [:]
         state.withLock { state in
             swap(&state.routes, &replaced)
+            swap(&state.eventCounts, &counts)
             state.clockSource = nil
         }
     }

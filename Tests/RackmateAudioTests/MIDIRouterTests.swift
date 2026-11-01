@@ -15,8 +15,13 @@ private let clockUMP: UInt32 = 0x10F8_0000
 /// At the default 120 BPM.
 private let beatsPerBlock = Float(blockFrames) * 2 / Float(sampleRate)
 
+/// The channel of a slot, so that a target for a slot is always for the same channel.
+private func channelID(ofSlot slot: Int32) -> UUID {
+    UUID(uuid: (UInt8(truncatingIfNeeded: slot), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1))
+}
+
 private func target(_ source: String, _ channel: MIDIChannelFilter, slot: Int32) -> MIDIRouteTarget {
-    MIDIRouteTarget(route: MIDIRoute(sourceName: source, channel: channel), slot: slot)
+    MIDIRouteTarget(route: MIDIRoute(sourceName: source, channel: channel), slot: slot, channel: channelID(ofSlot: slot))
 }
 
 /// Sends `count` clock ticks and returns the time of the last one.
@@ -143,6 +148,46 @@ struct MIDIRouterTests {
             let output = rig.render()
             expectLevel(output[0], 0.25)
             expectLevel(output[2], 0.25)
+        }
+    }
+
+    @Test func eventCountAdvancesOnlyForTheChannelThatReceives() async throws {
+        try await withRouter(try await twoInstruments()) { router, _ in
+            let first = channelID(ofSlot: 0)
+            let second = channelID(ofSlot: 1)
+            router.setRoutes([target("A", .channel(1), slot: 0), target("A", .channel(2), slot: 1)])
+            #expect(router.eventCount(channel: first) == 0)
+
+            router.handle(noteOnChannel1, fromSource: "A", at: 0)
+            #expect(router.eventCount(channel: first) == 1)
+            #expect(router.eventCount(channel: second) == 0)
+
+            router.handle(.channelVoice(status: 0x80, data1: 60, data2: 0), fromSource: "A", at: 0)
+            router.handle(noteOnChannel1, fromSource: "B", at: 0)
+            router.handle(.clock, fromSource: "A", at: 0)
+            #expect(router.eventCount(channel: first) == 2)
+            #expect(router.eventCount(channel: second) == 0)
+            #expect(router.eventCount(channel: UUID()) == 0)
+        }
+    }
+
+    @Test func aMessageForTwoChannelsCountsForBoth() async throws {
+        try await withRouter(try await twoInstruments()) { router, _ in
+            router.setRoutes([target("A", .channel(1), slot: 0), target("A", .all, slot: 1)])
+            router.handle(noteOnChannel1, fromSource: "A", at: 0)
+            #expect(router.eventCount(channel: channelID(ofSlot: 0)) == 1)
+            #expect(router.eventCount(channel: channelID(ofSlot: 1)) == 1)
+        }
+    }
+
+    @Test func theCountSurvivesAnEditThatKeepsTheChannel() async throws {
+        try await withRouter(try await twoInstruments()) { router, _ in
+            router.setRoutes([target("A", .channel(1), slot: 0)])
+            router.handle(noteOnChannel1, fromSource: "A", at: 0)
+            router.setRoutes([target("A", .channel(1), slot: 0), target("A", .channel(2), slot: 1)])
+            #expect(router.eventCount(channel: channelID(ofSlot: 0)) == 1)
+            router.handle(noteOnChannel1, fromSource: "A", at: 0)
+            #expect(router.eventCount(channel: channelID(ofSlot: 0)) == 2)
         }
     }
 

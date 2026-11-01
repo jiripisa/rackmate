@@ -41,8 +41,8 @@ private func effectChannel(
     Channel(kind: .effect, slot: slot(plugin, state: state), audioIn: audioIn, sidechainIn: sidechainIn, audioOut: out, effects: effects)
 }
 
-private func insert(_ plugin: PluginID = gainID, sidechainIn: AudioChannels? = nil) -> InsertEffect {
-    InsertEffect(slot: slot(plugin), sidechainIn: sidechainIn)
+private func insert(_ plugin: PluginID = gainID, sidechainIn: AudioChannels? = nil, isOn: Bool = true) -> InsertEffect {
+    InsertEffect(slot: slot(plugin), sidechainIn: sidechainIn, isOn: isOn)
 }
 
 private func configuration(_ channels: Channel...) -> Configuration {
@@ -666,6 +666,85 @@ struct RunnerTests {
             await runner.apply(configuration(channel))
             try press(channel, runner, rig)
             expectLevel(rig.render()[0], 0.25)
+        }
+    }
+
+    // MARK: - Effects that are off
+
+    @Test func turningAnEffectOffKeepsItsPlugin() async throws {
+        try await withRunner { runner, rig in
+            var channel = instrumentChannel(effects: [[insert()]])
+            await runner.apply(configuration(channel))
+            let plugin = try #require(runner.plugin(channel: channel.id, effect: channel.effects[0][0].id))
+            try press(channel, runner, rig)
+            let withEffect = rig.render()[0]
+
+            channel.effects[0][0].isOn = false
+            await runner.apply(configuration(channel))
+            #expect(runner.plugin(channel: channel.id, effect: channel.effects[0][0].id) === plugin)
+            #expect(runner.status == [channel.id: .ready])
+            let dry = rig.render()[0]
+            #expect(dry != withEffect)
+            expectLevel(dry, 0.25)
+
+            channel.effects[0][0].isOn = true
+            await runner.apply(configuration(channel))
+            #expect(runner.plugin(channel: channel.id, effect: channel.effects[0][0].id) === plugin)
+        }
+    }
+
+    @Test func movingAnEffectBetweenChannelsKeepsItsPlugin() async throws {
+        try await withRunner { runner, _ in
+            let moving = insert()
+            let first = instrumentChannel(effects: [[moving]])
+            let second = instrumentChannel(out: out23)
+            var config = configuration(first, second)
+            await runner.apply(config)
+            let plugin = try #require(runner.plugin(channel: first.id, effect: moving.id))
+
+            let moved = config.moveEffect(moving.id, to: .end(channel: second.id))
+            #expect(moved)
+            await runner.apply(config)
+            #expect(runner.plugin(channel: second.id, effect: moving.id) === plugin)
+            #expect(runner.plugin(channel: first.id, effect: moving.id) == nil)
+            #expect(runner.status == [first.id: .ready, second.id: .ready])
+        }
+    }
+
+    @Test func anEffectOffMovedAndTurnedOnKeepsItsPlugin() async throws {
+        try await withRunner { runner, _ in
+            let moving = insert(isOn: false)
+            let first = instrumentChannel(effects: [[moving]])
+            let second = instrumentChannel(out: out23)
+            var config = configuration(first, second)
+            await runner.apply(config)
+            let plugin = try #require(runner.plugin(channel: first.id, effect: moving.id))
+
+            let moved = config.moveEffect(moving.id, to: .end(channel: second.id))
+            #expect(moved)
+            await runner.apply(config)
+            #expect(runner.plugin(channel: second.id, effect: moving.id) === plugin)
+
+            config.channels[1].setEffect(effectID: moving.id, isOn: true)
+            await runner.apply(config)
+            #expect(runner.plugin(channel: second.id, effect: moving.id) === plugin)
+        }
+    }
+
+    @Test func anOffEffectStillSavesItsState() async throws {
+        let known = try await HostedPlugin.load(delayID).fullState()
+        try await withRunner { runner, _ in
+            let channel = instrumentChannel(effects: [[InsertEffect(slot: slot(delayID, state: known), isOn: false)]])
+            let config = configuration(channel)
+            await runner.apply(config)
+            let plugin = try #require(runner.plugin(channel: channel.id, effect: channel.effects[0][0].id))
+            AudioUnitSetParameter(plugin.audioUnit, kDelayParam_WetDryMix, kAudioUnitScope_Global, 0, 33, 0)
+
+            let captured = runner.capturingState(of: config)
+
+            let state = try #require(captured.channels[0].effects[0][0].slot.state)
+            #expect(state != known)
+            #expect(!captured.channels[0].effects[0][0].isOn)
         }
     }
 
