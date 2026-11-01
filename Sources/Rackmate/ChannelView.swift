@@ -105,7 +105,7 @@ struct ChannelUnit: View {
             Spacer(minLength: 0)
             ActivityLED(activity: activity)
                 .padding(.leading, 2)
-                .help(channel.kind == .effect ? "Lights when audio comes in" : "Lights when MIDI comes in")
+                .help(channel.kind == .effect ? "Lights when audio comes out" : "Lights when MIDI comes in")
         }
         .frame(width: 34, alignment: .leading)
         .frame(maxHeight: .infinity, alignment: .top)

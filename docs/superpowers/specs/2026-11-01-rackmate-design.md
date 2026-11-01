@@ -31,7 +31,7 @@ Left to right: `RACKMATE` set wide in muted DIN Condensed, a divider, the rack n
 
 A channel is one rack unit, at least 132 points high, growing with its content. Columns left to right:
 
-1. **Position:** two-digit number, × to remove, and an LED at the bottom. On an instrument the LED flashes on incoming MIDI. On a standalone effect it flashes on input signal.
+1. **Position:** two-digit number, × to remove, and an LED at the bottom. On an instrument the LED flashes on incoming MIDI. On a standalone effect it flashes on output signal.
 2. **Inputs:** see Displays. The first block's display shares its bottom edge with the plugin picture.
 3. **Identity:** a generic picture and the plugin name on the first row, the preset display on the second. Pictures come from the plugin kind: keys for an instrument, a wave for an effect. A plugin tagged as a sampler by Audio Unit tags gets pads, if the tag is available; otherwise keys.
 4. **Keys:** two 34-point icon keys, level with the two identity rows. Open plugin, then Follow Start/Stop. A key that is on lights green and glows. Text lives in tooltips: "Open plugin", "Close plugin", "Follow Start/Stop: On", "Follow Start/Stop: Off". Open plugin is dimmed while the plugin cannot open.
