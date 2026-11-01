@@ -209,7 +209,8 @@ private final class PluginWindow: NSObject, NSWindowDelegate {
 
     /// The prototype's cascade over the mixer.
     private func place(_ window: NSWindow) {
-        guard let mixer = NSApp.mainWindow.map({ $0.parent ?? $0 }) else {
+        // Not `NSApp.mainWindow`, which is nil while another app is in front.
+        guard let mixer = NSApp.windows.first(where: { $0.title == "Rackmate" }) else {
             window.center()
             return
         }
