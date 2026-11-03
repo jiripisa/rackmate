@@ -31,6 +31,9 @@ Your plugins as instruments in the studio.
 - Checks with audio running use silent units only. No test unit that makes a
   test signal may reach the app, and no standalone effect with a live input.
 - Hardware tests with real plugins need the owner's OK.
+- `com.apple.security.cs.allow-unsigned-executable-memory` stays in
+  `Resources/Rackmate.entitlements`. Without it macOS kills Rackmate when a
+  PACE/iLok protected plugin loads, and no test catches that.
 
 ## Releases
 
