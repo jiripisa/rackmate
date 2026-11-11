@@ -201,7 +201,8 @@ private struct SlotName: View {
     /// exactly as tall as the capitals, on the same baseline.
     private static let pictureSide: CGFloat = 15.5
     /// Where the bars end, from the picture's top, on a whole pixel so both edges meet the capitals.
-    private static let pictureBaseline: CGFloat = 13.5
+    /// Nonisolated: the alignment guide reads it from a Sendable closure.
+    nonisolated private static let pictureBaseline: CGFloat = 13.5
 
     let look: EffectLook
 
