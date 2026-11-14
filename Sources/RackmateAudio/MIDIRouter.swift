@@ -97,15 +97,21 @@ public final class MIDIRouter {
     @ObservationIgnored private var clockPoll: Task<Void, Never>?
 
     /// The app's one Audio Unit event listener, which sends every mapped write, so that a listener
-    /// watching for the owner's moves can tell them from the knobs'. Its events go to
-    /// `onParameterEvent`. Nil only if the system could not make one; writes then go without it. It
+    /// watching for the owner's moves can tell them from the knobs'. Its events go to the handlers
+    /// of `addParameterHandler`. Nil only if the system could not make one; writes then go without it. It
     /// lasts as long as the router.
     public var parameterListener: AUEventListenerRef? { routing.parameterListener }
 
-    /// Hears each event of `parameterListener`, on the main actor, until `close`.
-    public var onParameterEvent: ((AudioUnitEvent) -> Void)? {
-        get { parameterEvents.hook }
-        set { if !isClosed { parameterEvents.hook = newValue } }
+    /// Hears each event of `parameterListener` that is about `audioUnit`, on the main actor, until
+    /// `removeParameterHandler` or `close`. Several windows can watch at once, each its own plugin.
+    public func addParameterHandler(for audioUnit: AudioUnit, _ handler: @escaping (AudioUnitEvent) -> Void) -> UUID {
+        let token = UUID()
+        if !isClosed { parameterEvents.handlers[token] = (audioUnit, handler) }
+        return token
+    }
+
+    public func removeParameterHandler(_ token: UUID) {
+        parameterEvents.handlers[token] = nil
     }
 
     /// Without a CoreMIDI client, which is not an error, `sources` stays empty and only `handle`
@@ -140,7 +146,7 @@ public final class MIDIRouter {
         clockPoll?.cancel()
         input = nil
         routing.close()
-        parameterEvents.hook = nil
+        parameterEvents.handlers = [:]
         sources = []
     }
 
@@ -233,7 +239,12 @@ public final class MIDIRouter {
 /// routing, before the router exists.
 @MainActor
 private final class ParameterEvents {
-    var hook: ((AudioUnitEvent) -> Void)?
+    var handlers: [UUID: (audioUnit: AudioUnit, handler: (AudioUnitEvent) -> Void)] = [:]
+
+    func deliver(_ event: AudioUnitEvent) {
+        let audioUnit = event.mArgument.mParameter.mAudioUnit
+        for entry in handlers.values where entry.audioUnit == audioUnit { entry.handler(event) }
+    }
 }
 
 /// Names one source in the refCon of its connection, so the CoreMIDI thread gets a name without
@@ -327,7 +338,7 @@ private final class MIDIRouting: Sendable {
         var listener: AUEventListenerRef?
         let status = AUEventListenerCreateWithDispatchQueue(&listener, 0, 0, .main) { _, event, _, _ in
             let event = event.pointee
-            MainActor.assumeIsolated { parameterEvents.hook?(event) }
+            MainActor.assumeIsolated { parameterEvents.deliver(event) }
         }
         if status != noErr { logger.error("Cannot create a parameter listener: \(status)") }
         parameterListener = status == noErr ? listener : nil
