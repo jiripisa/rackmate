@@ -25,4 +25,15 @@ struct TestUnitsTests {
             }
         }
     }
+
+    @Test("Test Controls renders silence, and the app does not get it")
+    func testControlsIsSilent() async throws {
+        #expect(!safeTestUnits.map(\.subtype).contains("PlCt"))
+        let plugin = try await loadPlugin(type: "aufx", subtype: "PlCt")
+        let rig = Rig()
+        rig.install([StripSpec(source: plugin, midiSlot: 0)])
+        for _ in 0..<3 {
+            for channel in rig.render() { expectLevel(channel, 0) }
+        }
+    }
 }

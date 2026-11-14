@@ -33,7 +33,9 @@ final class PluginWindows {
             return
         }
         guard let plugin = app.hostedPlugin(at: location), let slot = app.session?.configuration.slot(at: location) else { return }
-        let window = PluginWindow(plugin: plugin, title: slot.displayName, cascade: opened, isHidden: isHidden) { [weak self] changed in
+        let window = PluginWindow(
+            plugin: plugin, app: app, location: location, title: slot.displayName, cascade: opened, isHidden: isHidden
+        ) { [weak self] changed in
             self?.windows[location] = nil
             if let changed { self?.app.notePluginSoundChanged(at: location, to: changed) }
         }
@@ -84,7 +86,8 @@ final class PluginWindows {
     }
 }
 
-/// One plugin's `NSWindow`, which takes the size the plugin gives its view.
+/// One plugin's `NSWindow`: the plugin's view at the size the plugin gives it, and the MIDI CONTROL
+/// strip under it. While it is open it watches which parameters the owner moves, for Learn.
 @MainActor
 private final class PluginWindow: NSObject, NSWindowDelegate {
     let plugin: HostedPlugin
@@ -93,11 +96,18 @@ private final class PluginWindow: NSObject, NSWindowDelegate {
     /// Where it stood among the app's windows when it was hidden, front first.
     private(set) var stackPosition = 0
 
+    private unowned let app: AppModel
+    private let location: PluginLocation
     private let title: String
     private let cascade: Int
     private let onClose: (_ changed: Data?) -> Void
     private var window: NSWindow?
     private var view: NSView?
+    /// The plugin's view, or the note that it has none.
+    private var pluginArea: NSView?
+    private var strip: NSView?
+    private var stripHeight: CGFloat = 0
+    private var watch: ParameterWatch?
     private weak var mixer: NSWindow?
     private var preferredSize: NSKeyValueObservation?
     private var isHidden: Bool
@@ -105,8 +115,13 @@ private final class PluginWindow: NSObject, NSWindowDelegate {
     private var isClosed = false
     private var readsStateOnClose = true
 
-    init(plugin: HostedPlugin, title: String, cascade: Int, isHidden: Bool, onClose: @escaping (_ changed: Data?) -> Void) {
+    init(
+        plugin: HostedPlugin, app: AppModel, location: PluginLocation, title: String, cascade: Int, isHidden: Bool,
+        onClose: @escaping (_ changed: Data?) -> Void
+    ) {
         self.plugin = plugin
+        self.app = app
+        self.location = location
         // The plugin's view can write state while it builds, so the baseline waits for the view.
         baseline = SoundBaseline(state: nil)
         self.title = title
@@ -124,7 +139,15 @@ private final class PluginWindow: NSObject, NSWindowDelegate {
             plugin.releaseView()
             return
         }
-        let content = view.map(sized) ?? noWindowNote()
+        if let view { size(view) }
+        let area = view ?? noWindowNote()
+        let strip = makeStrip()
+        let content = NSView(frame: NSRect(origin: .zero, size: contentSize(area: area.frame.size)))
+        content.autoresizesSubviews = false
+        content.wantsLayer = true
+        content.layer?.backgroundColor = NSColor(Color.panel).cgColor
+        content.addSubview(area)
+        content.addSubview(strip)
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: content.frame.size), styleMask: [.titled, .closable], backing: .buffered, defer: false
         )
@@ -132,9 +155,19 @@ private final class PluginWindow: NSObject, NSWindowDelegate {
         window.tabbingMode = .disallowed
         window.title = title
         window.contentView = content
+        // The keyboard starts with the plugin, not in a range field of the strip.
+        window.initialFirstResponder = view
         window.delegate = self
         self.window = window
         self.view = view
+        pluginArea = area
+        self.strip = strip
+        layOut(content)
+        if let router = app.audio?.router {
+            watch = ParameterWatch(router: router, plugin: plugin) { [unowned app = self.app, location = self.location] parameter in
+                app.noteParameterTouched(at: location, parameter: parameter)
+            }
+        }
         follow(view)
         place(window)
         if !isHidden {
@@ -188,17 +221,39 @@ private final class PluginWindow: NSObject, NSWindowDelegate {
 
     // MARK: - Private
 
-    /// The view inside a container, so the window sizes the container and the view stays the plugin's.
-    private func sized(_ view: NSView) -> NSView {
+    /// The view goes inside a container with the strip, so the window sizes the container and the view
+    /// keeps the plugin's size.
+    private func size(_ view: NSView) {
         let size = PanelLayout.pluginWindowSize(
             frame: view.frame.size, preferred: plugin.viewController?.preferredContentSize, fitting: view.fittingSize
         )
-        let container = NSView(frame: NSRect(origin: .zero, size: size))
-        container.autoresizesSubviews = false
         view.setFrameOrigin(.zero)
         view.setFrameSize(size)
-        container.addSubview(view)
-        return container
+    }
+
+    /// Reads the plugin's parameters once, for the strip's menu and its dimmed rows.
+    private func makeStrip() -> NSView {
+        let strip = NSHostingView(
+            rootView: MIDIControlStrip(model: app, location: location, parameters: plugin.parameters()) { [weak self] height in
+                // SwiftUI is laying out, and the window must not resize inside that.
+                Task { @MainActor in self?.stripHeightChanged(height) }
+            })
+        stripHeight = strip.fittingSize.height
+        return strip
+    }
+
+    private func contentSize(area: CGSize) -> CGSize {
+        PanelLayout.pluginWindowSize(plugin: area, strip: CGSize(width: MIDIControlStrip.minimumWidth, height: stripHeight))
+    }
+
+    /// The strip across the bottom, and the plugin's view above it in the middle.
+    private func layOut(_ content: NSView) {
+        guard let pluginArea, let strip else { return }
+        let width = content.frame.width
+        let stripFrame = NSRect(x: 0, y: 0, width: width, height: stripHeight)
+        if strip.frame != stripFrame { strip.frame = stripFrame }
+        let origin = NSPoint(x: ((width - pluginArea.frame.width) / 2).rounded(.down), y: stripHeight)
+        if pluginArea.frame.origin != origin { pluginArea.setFrameOrigin(origin) }
     }
 
     private func noWindowNote() -> NSView {
@@ -241,11 +296,27 @@ private final class PluginWindow: NSObject, NSWindowDelegate {
     }
 
     @objc private func viewFrameChanged() {
-        guard let window, let size = view?.frame.size, size.width > 0, size.height > 0, window.contentView?.frame.size != size else { return }
-        // Grows and shrinks from the bottom, so the title bar stays under the pointer.
-        let resized = window.frameRect(forContentRect: NSRect(origin: .zero, size: size))
-        let top = window.frame.maxY
-        window.setFrame(NSRect(x: window.frame.minX, y: top - resized.height, width: resized.width, height: resized.height), display: true)
+        guard let size = view?.frame.size, size.width > 0, size.height > 0 else { return }
+        fit()
+    }
+
+    private func stripHeightChanged(_ height: CGFloat) {
+        guard !isClosed, height != stripHeight else { return }
+        stripHeight = height
+        fit()
+    }
+
+    /// The window around the plugin's view and the strip, after either changed its size.
+    private func fit() {
+        guard let window, let content = window.contentView, let pluginArea else { return }
+        let size = contentSize(area: pluginArea.frame.size)
+        if content.frame.size != size {
+            // Grows and shrinks from the bottom, so the title bar stays under the pointer.
+            let resized = window.frameRect(forContentRect: NSRect(origin: .zero, size: size))
+            let top = window.frame.maxY
+            window.setFrame(NSRect(x: window.frame.minX, y: top - resized.height, width: resized.width, height: resized.height), display: true)
+        }
+        layOut(content)
     }
 
     private func finish() {
@@ -253,6 +324,10 @@ private final class PluginWindow: NSObject, NSWindowDelegate {
         isClosed = true
         NotificationCenter.default.removeObserver(self)
         preferredSize = nil
+        // The watch holds the plugin until it stops, and Learn ends with its window.
+        watch?.stop()
+        watch = nil
+        app.stopLearning(at: location)
         let changed = readsStateOnClose ? changedState() : nil
         if let window {
             window.delegate = nil
@@ -263,6 +338,8 @@ private final class PluginWindow: NSObject, NSWindowDelegate {
         }
         view?.removeFromSuperview()
         view = nil
+        pluginArea = nil
+        strip = nil
         window = nil
         if !isOpening { plugin.releaseView() }
         onClose(changed)

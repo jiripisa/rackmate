@@ -1,3 +1,4 @@
+import AudioToolbox
 import CRenderCore
 import CoreMIDI
 import Foundation
@@ -15,6 +16,13 @@ private let allSoundOff: UInt8 = 120
 private let allNotesOff: UInt8 = 123
 private let midiChannels: ClosedRange<UInt8> = 0...15
 
+/// At most this many parameters follow one control change; a knob mapped to more drops the rest.
+private let maxWritesPerControlChange = 32
+
+/// One step of a knob's travel, as a fraction of a parameter's range: a read-back closer than this to
+/// what the knob left is the knob's own.
+private let knobStep = 1.0 / 127
+
 /// Where the events of one route go, and whose they are.
 public struct MIDIRouteTarget: Equatable, Sendable {
     public var route: MIDIRoute
@@ -29,6 +37,64 @@ public struct MIDIRouteTarget: Equatable, Sendable {
     }
 }
 
+/// A knob mapped to a parameter of a plugin in the rack.
+public struct ControlTarget: Sendable {
+    public var knob: ControlKnob
+    /// The rack node that holds the plugin, for `takeMovedNodes` and `rearmControls`.
+    public var node: UUID
+    public var parameter: AudioUnitParameterID
+    /// Nil while the plugin loads, when it failed or when it lacks the parameter. The knob is still
+    /// swallowed then.
+    public var write: ControlWrite?
+
+    public init(knob: ControlKnob, node: UUID, parameter: AudioUnitParameterID, write: ControlWrite?) {
+        self.knob = knob
+        self.node = node
+        self.parameter = parameter
+        self.write = write
+    }
+}
+
+/// A knob's target by its node, parameter and knob, as `takeoverHints` names it.
+public struct ControlKey: Hashable, Sendable {
+    public var node: UUID
+    public var parameter: AudioUnitParameterID
+    public var knob: ControlKnob
+
+    public init(node: UUID, parameter: AudioUnitParameterID, knob: ControlKnob) {
+        self.node = node
+        self.parameter = parameter
+        self.knob = knob
+    }
+}
+
+/// What a knob needs to write its parameter: the plugin, the parameter's range, and the part `from`
+/// to `to` of that range the knob's travel covers.
+public struct ControlWrite: Sendable {
+    public var plugin: HostedPlugin
+    public var range: ParameterRange
+    public var from: Double
+    public var to: Double
+    /// Whether the router reads the parameter back right after each write, so that a plugin which
+    /// snaps or clamps what it is given keeps following the knob (`movedElsewhere`).
+    ///
+    /// Not for a version 3 unit: its v2 bridge holds a read for about 33 ms after a write, and that
+    /// would hold up the CoreMIDI thread, and every note behind the knob, on each write. So a v3
+    /// parameter that snaps can still stall the knob. The read before each write has the same hold
+    /// when control changes come faster than it, which throttles fast turns on v3 units; that is a
+    /// known follow-up.
+    public var readsBack: Bool
+
+    /// `readsBack` is decided by the unit's kind unless given.
+    public init(plugin: HostedPlugin, range: ParameterRange, from: Double, to: Double, readsBack: Bool? = nil) {
+        self.plugin = plugin
+        self.range = range
+        self.from = from
+        self.to = to
+        self.readsBack = readsBack ?? !plugin.isAUv3
+    }
+}
+
 /// Takes MIDI from every system source to the strips that want it, and follows the clock of one
 /// source. Notes go from the CoreMIDI thread straight into the render core and never wait for the
 /// main actor. The app only listens: it has no output port and sends MIDI to nothing.
@@ -37,6 +103,11 @@ public struct MIDIRouteTarget: Equatable, Sendable {
 /// never hops here and a clock that goes silent still shows. `tempo` is what plugins are told, which
 /// is the last tempo known, or 120 BPM if there has been none. That poll also stops the transport of
 /// a source that went silent without a Stop, and then only a Start or Continue starts it again.
+///
+/// A control change that matches a knob of `setControls` goes to no instrument. It sets the knob's
+/// parameters instead, from the CoreMIDI thread as well, once each has taken over (`Takeover`). A
+/// parameter that moved another way since the knob last wrote it, such as by a program change or the
+/// plugin's own modulation, makes the knob wait again; the knob sees that at its next move.
 ///
 /// The router does not own the engine, and must go before the engine does.
 @MainActor
@@ -51,13 +122,32 @@ public final class MIDIRouter {
     public private(set) var tempo = ClockTracker.defaultTempo
 
     private let routing: MIDIRouting
+    @ObservationIgnored private let parameterEvents = ParameterEvents()
     @ObservationIgnored private var input: MIDIInput?
     @ObservationIgnored private var clockPoll: Task<Void, Never>?
+
+    /// The app's one Audio Unit event listener, which sends every mapped write, so that a listener
+    /// watching for the owner's moves can tell them from the knobs'. Its events go to the handlers
+    /// of `addParameterHandler`. Nil only if the system could not make one; writes then go without it. It
+    /// lasts as long as the router.
+    public var parameterListener: AUEventListenerRef? { routing.parameterListener }
+
+    /// Hears each event of `parameterListener` that is about `audioUnit`, on the main actor, until
+    /// `removeParameterHandler` or `close`. Several windows can watch at once, each its own plugin.
+    public func addParameterHandler(for audioUnit: AudioUnit, _ handler: @escaping (AudioUnitEvent) -> Void) -> UUID {
+        let token = UUID()
+        if !isClosed { parameterEvents.handlers[token] = (audioUnit, handler) }
+        return token
+    }
+
+    public func removeParameterHandler(_ token: UUID) {
+        parameterEvents.handlers[token] = nil
+    }
 
     /// Without a CoreMIDI client, which is not an error, `sources` stays empty and only `handle`
     /// gets events through.
     public init(engine: OpaquePointer) {
-        routing = MIDIRouting(engine: engine)
+        routing = MIDIRouting(engine: engine, parameterEvents: parameterEvents)
         input = MIDIInput(routing: routing) { [weak self] in
             Task { @MainActor in self?.refreshSources() }
         }
@@ -86,6 +176,7 @@ public final class MIDIRouter {
         clockPoll?.cancel()
         input = nil
         routing.close()
+        parameterEvents.handlers = [:]
         sources = []
     }
 
@@ -95,6 +186,44 @@ public final class MIDIRouter {
     public func setRoutes(_ routes: [MIDIRouteTarget]) {
         guard !isClosed else { return }
         routing.setRoutes(routes)
+    }
+
+    /// Applies at once, like `setRoutes`. A target with the node, parameter and knob of one in the
+    /// table keeps its takeover and a move `takeMovedNodes` has not reported yet, and while its plugin
+    /// stays, what it wrote last and, with the same range, its takeover hint; any other waits for its
+    /// parameter.
+    public func setControls(_ targets: [ControlTarget]) {
+        guard !isClosed else { return }
+        routing.setControls(targets)
+    }
+
+    /// The knobs of `node`, or only those of its `parameter`, wait for the parameter again: after a
+    /// preset is picked, or when the owner moved the parameter in the plugin's window.
+    public func rearmControls(node: UUID, parameter: AudioUnitParameterID? = nil) {
+        routing.rearmControls(node: node, parameter: parameter)
+    }
+
+    /// The nodes a knob wrote to since the last call.
+    public func takeMovedNodes() -> Set<UUID> {
+        routing.takeMovedNodes()
+    }
+
+    /// Which way each waiting knob with a write has to turn to take over, as of its last move, a rearm
+    /// or its new table. A knob that follows, or has no write, is not in it.
+    public func takeoverHints() -> [ControlKey: TakeoverHint] {
+        routing.takeoverHints()
+    }
+
+    /// While on, the newest control change from any source, mapped or not, waits for
+    /// `takeLearnedKnob`, and no control change goes to an instrument. Off forgets it.
+    public func setLearning(_ on: Bool) {
+        guard !isClosed else { return }
+        routing.setLearning(on)
+    }
+
+    /// The knob of the newest control change since learning went on or since the last take.
+    public func takeLearnedKnob() -> ControlKnob? {
+        routing.takeLearnedKnob()
     }
 
     /// How many channel-voice messages the routes have delivered to `channel` since it got its first
@@ -143,6 +272,18 @@ public final class MIDIRouter {
     }
 }
 
+/// Takes the events of the parameter listener to the main actor. The listener comes with the
+/// routing, before the router exists.
+@MainActor
+private final class ParameterEvents {
+    var handlers: [UUID: (audioUnit: AudioUnit, handler: (AudioUnitEvent) -> Void)] = [:]
+
+    func deliver(_ event: AudioUnitEvent) {
+        let audioUnit = event.mArgument.mParameter.mAudioUnit
+        for entry in handlers.values where entry.audioUnit == audioUnit { entry.handler(event) }
+    }
+}
+
 /// Names one source in the refCon of its connection, so the CoreMIDI thread gets a name without
 /// looking anything up.
 final class SourceTag: Sendable {
@@ -172,7 +313,73 @@ final class SourceTag: Sendable {
 /// the port's receive block on, whichever source a message came from, the main actor for a route
 /// change, or the test's thread for a `handle` in a test. Every push is under the lock, so none of
 /// these can overlap.
+///
+/// The control table is the one thing the CoreMIDI thread changes in place: takeover and its hint,
+/// moved flags, last writes and the learned knob are values in it, made on the main actor, so nothing is made
+/// under the lock. Nothing but `State` holds the table, or the first change would copy it. A control
+/// change calls into Audio Units, which take locks of their own, so it never does under this one: it
+/// notes its parameters and retains their plugins under the lock, reads their values outside it,
+/// decides under the lock again, writes outside it and reads back where `ControlWrite.readsBack`
+/// says so, and notes what it read under the lock a third time. A table replaced meanwhile writes
+/// nothing, but a write that passed its second check can still land after `setControls` or `close`,
+/// on a plugin kept alive by its own retain.
 private final class MIDIRouting: Sendable {
+
+    private struct Control {
+        var target: ControlTarget
+        var takeover = Takeover()
+        /// Set when the knob wrote, cleared by `takeMovedNodes`.
+        var moved = false
+        /// What the knob wrote last, while it follows, and what the plugin read back right after, which
+        /// stays nil for a write that does not read back (`ControlWrite.readsBack`). A plugin may snap,
+        /// clamp or round what it is given, so the next read-back is compared with both
+        /// (`movedElsewhere`).
+        var lastWritten: Float?
+        var lastRead: Float?
+        /// Which way the knob has to turn while it waits, for `takeoverHints`. Nil while it follows, and
+        /// without a write.
+        var waitingHint: TakeoverHint?
+
+        /// Waits, with the hint of a knob that has not moved.
+        init(target: ControlTarget) {
+            self.target = target
+            waitingHint = unmovedHint
+        }
+
+        /// Nil without a write, or with equal ends, which take over at the first move.
+        var unmovedHint: TakeoverHint? {
+            target.write.flatMap { takeover.hint(knob: nil, currentFraction: $0.from, from: $0.from, to: $0.to) }
+        }
+
+        mutating func rearm() {
+            takeover.rearm()
+            lastWritten = nil
+            lastRead = nil
+            waitingHint = unmovedHint
+        }
+
+        /// The parameter, now at `value`, changed another way since the knob last wrote it: it is more
+        /// than one knob step from what was written and from what was read back after. A plugin whose
+        /// read-back lags a write shows the value written by the next control change.
+        func movedElsewhere(to value: Float, in range: ParameterRange) -> Bool {
+            guard let lastWritten else { return false }
+            let fraction = range.fraction(of: value)
+            if abs(fraction - range.fraction(of: lastWritten)) <= knobStep { return false }
+            if let lastRead, abs(fraction - range.fraction(of: lastRead)) <= knobStep { return false }
+            return true
+        }
+
+        func isSame(as other: ControlTarget) -> Bool {
+            target.node == other.node && target.parameter == other.parameter && target.knob.isSame(as: other.knob)
+        }
+
+        /// The same plugin and knob range as `old`, so the knob position of the parameter's value is
+        /// where it was, and so is `old`'s hint.
+        func writesLike(_ old: Control) -> Bool {
+            guard let write = target.write, let oldWrite = old.target.write else { return false }
+            return write.plugin === oldWrite.plugin && write.from == oldWrite.from && write.to == oldWrite.to
+        }
+    }
 
     private struct State {
         var routes: [MIDIRouteTarget] = []
@@ -187,29 +394,58 @@ private final class MIDIRouting: Sendable {
         var reading = ClockTracker().reading
         /// What plugins are told, which outlives any one tracker.
         var tempo = ClockTracker.defaultTempo
+        var controls: [Control] = []
+        /// Moves on with every new table, so a control change that let go of the lock between its
+        /// passes knows its indices still point at the same targets.
+        var controlsGeneration: UInt64 = 0
+        var isLearning = false
+        var learnedKnob: ControlKnob?
     }
 
     private nonisolated(unsafe) let engine: OpaquePointer
+    /// Disposed only with this object, since a write on its way after `close` still sends with it,
+    /// and every `handle` holds this object until it returns.
+    nonisolated(unsafe) let parameterListener: AUEventListenerRef?
     private let secondsPerHostTick: Double
     private let state = Mutex(State())
     /// One per name and never removed, so that a callback carrying a tag finds it alive even after
     /// its source left. The receive block holds this object, so the tags outlive every callback.
     private let tags = Mutex<[String: SourceTag]>([:])
 
-    init(engine: OpaquePointer) {
+    /// On the main actor, whose queue the listener reports on.
+    init(engine: OpaquePointer, parameterEvents: ParameterEvents) {
         self.engine = engine
         var timebase = mach_timebase_info_data_t()
         mach_timebase_info(&timebase)
         secondsPerHostTick = Double(timebase.numer) / Double(timebase.denom) / 1e9
+        var listener: AUEventListenerRef?
+        let status = AUEventListenerCreateWithDispatchQueue(&listener, 0, 0, .main) { _, event, _, _ in
+            let event = event.pointee
+            MainActor.assumeIsolated { parameterEvents.deliver(event) }
+        }
+        if status != noErr { logger.error("Cannot create a parameter listener: \(status)") }
+        parameterListener = status == noErr ? listener : nil
+    }
+
+    /// Can run on the CoreMIDI thread, when the receive block lets go last.
+    deinit {
+        guard let parameterListener else { return }
+        nonisolated(unsafe) let listener = parameterListener
+        if Thread.isMainThread {
+            AUListenerDispose(listener)
+        } else {
+            DispatchQueue.main.async { AUListenerDispose(listener) }
+        }
     }
 
     func handle(_ event: MIDIEvent, fromSource source: String, at seconds: Double) {
+        if case .channelVoice(let status, let data1, let data2) = event, status & 0xF0 == controlChange {
+            handleControlChange(status: status, controller: data1, value: data2, fromSource: source)
+            return
+        }
         state.withLock { state in
             if case .channelVoice(let status, let data1, let data2) = event {
-                for target in state.routes where isSameName(target.route.sourceName, source) && target.route.channel.matches(status: status) {
-                    pr_engine_push_midi(engine, target.slot, status, data1, data2)
-                    state.eventCounts[target.channel, default: 0] &+= 1
-                }
+                route(status: status, data1: data1, data2: data2, fromSource: source, in: &state)
             } else if let clockSource = state.clockSource, isSameName(clockSource, source) {
                 state.tracker.receive(event, at: seconds)
                 state.reading = state.tracker.reading
@@ -218,6 +454,176 @@ private final class MIDIRouting: Sendable {
                 pr_engine_set_transport(engine, state.tempo, state.reading.isPlaying)
             }
         }
+    }
+
+    /// Only under the lock.
+    private func route(status: UInt8, data1: UInt8, data2: UInt8, fromSource source: String, in state: inout State) {
+        for target in state.routes where isSameName(target.route.sourceName, source) && target.route.channel.matches(status: status) {
+            pr_engine_push_midi(engine, target.slot, status, data1, data2)
+            state.eventCounts[target.channel, default: 0] &+= 1
+        }
+    }
+
+    /// The passes of the type comment. Their scratch is on the stack, and whatever is let go of, the
+    /// knob a learn replaced or a plugin's retain, goes after the lock.
+    private func handleControlChange(status: UInt8, controller: UInt8, value: UInt8, fromSource source: String) {
+        // A copy of the source's name, which is a retain: the name lives in its tag.
+        var heard: ControlKnob? = ControlKnob(source: source, channel: Int(status & 0x0F) + 1, controller: Int(controller))
+        withUnsafeTemporaryAllocation(of: PendingWrite.self, capacity: maxWritesPerControlChange) { pending in
+            var count = 0
+            var generation: UInt64 = 0
+            state.withLock { state in
+                if state.isLearning { swap(&state.learnedKnob, &heard) }
+                var isMapped = false
+                for index in state.controls.indices where state.controls[index].target.knob.matches(heard: source, status: status, controller: controller) {
+                    isMapped = true
+                    guard count < pending.count, let write = state.controls[index].target.write else { continue }
+                    let entry = PendingWrite(
+                        plugin: .passRetained(write.plugin), unit: write.plugin.audioUnit, index: Int32(index),
+                        parameter: state.controls[index].target.parameter, value: 0, readsBack: write.readsBack
+                    )
+                    (pending.baseAddress! + count).initialize(to: entry)
+                    count += 1
+                }
+                // While learning, an instrument that answers the knob itself would report a touch of its
+                // own parameter, and that would take the knob instead of the one the owner moved.
+                if !isMapped && !state.isLearning { route(status: status, data1: controller, data2: value, fromSource: source, in: &state) }
+                generation = state.controlsGeneration
+            }
+            guard count > 0 else { return }
+
+            for index in 0..<count {
+                AudioUnitGetParameter(pending[index].unit, pending[index].parameter, kAudioUnitScope_Global, 0, &pending[index].value)
+            }
+
+            state.withLock { state in
+                let isSameTable = state.controlsGeneration == generation
+                for index in 0..<count {
+                    let control = Int(pending[index].index)
+                    pending[index].index = -1
+                    guard isSameTable, let write = state.controls[control].target.write else { continue }
+                    let current = write.range.fraction(of: pending[index].value)
+                    if state.controls[control].movedElsewhere(to: pending[index].value, in: write.range) {
+                        state.controls[control].rearm()
+                    }
+                    let follows = state.controls[control].takeover.follow(knob: value, currentFraction: current, from: write.from, to: write.to)
+                    let takeover = state.controls[control].takeover
+                    state.controls[control].waitingHint =
+                        takeover.hint(knob: takeover.lastKnob, currentFraction: current, from: write.from, to: write.to)
+                    guard follows else { continue }
+                    pending[index].value = write.range.value(atFraction: ControlMapping.fraction(forKnob: value, from: write.from, to: write.to))
+                    pending[index].index = Int32(control)
+                    state.controls[control].moved = true
+                    state.controls[control].lastWritten = pending[index].value
+                    state.controls[control].lastRead = nil
+                }
+            }
+
+            var readBack = false
+            for index in 0..<count where pending[index].index >= 0 {
+                var parameter = AudioUnitParameter(
+                    mAudioUnit: pending[index].unit, mParameterID: pending[index].parameter, mScope: kAudioUnitScope_Global, mElement: 0
+                )
+                AUParameterSet(parameterListener, nil, &parameter, pending[index].value, 0)
+                // Never for a v3 unit; `ControlWrite.readsBack` says why.
+                guard pending[index].readsBack else { continue }
+                AudioUnitGetParameter(pending[index].unit, pending[index].parameter, kAudioUnitScope_Global, 0, &pending[index].value)
+                readBack = true
+            }
+
+            // A rearm in between leaves no `lastWritten`, so a read noted after it compares with nothing.
+            if readBack {
+                state.withLock { state in
+                    guard state.controlsGeneration == generation else { return }
+                    for index in 0..<count where pending[index].index >= 0 && pending[index].readsBack {
+                        state.controls[Int(pending[index].index)].lastRead = pending[index].value
+                    }
+                }
+            }
+
+            for index in 0..<count {
+                // The last reference can go here; the plugin then hands its disposal to the main thread.
+                pending[index].plugin.release()
+            }
+        }
+    }
+
+    func setControls(_ targets: [ControlTarget]) {
+        var replaced = targets.map { Control(target: $0) }
+        state.withLock { state in
+            // A target that stays keeps its takeover and its move, and its last write while its plugin
+            // stays. Only values move here, nothing is made.
+            for index in replaced.indices {
+                guard let old = state.controls.firstIndex(where: { $0.isSame(as: replaced[index].target) }) else { continue }
+                replaced[index].takeover = state.controls[old].takeover
+                replaced[index].moved = state.controls[old].moved
+                replaced[index].waitingHint =
+                    replaced[index].writesLike(state.controls[old]) ? state.controls[old].waitingHint : replaced[index].unmovedHint
+                if replaced[index].target.write?.plugin === state.controls[old].target.write?.plugin {
+                    replaced[index].lastWritten = state.controls[old].lastWritten
+                    replaced[index].lastRead = state.controls[old].lastRead
+                }
+            }
+            swap(&state.controls, &replaced)
+            state.controlsGeneration &+= 1
+        }
+    }
+
+    func rearmControls(node: UUID, parameter: AudioUnitParameterID?) {
+        state.withLock { state in
+            for index in state.controls.indices where state.controls[index].target.node == node {
+                if let parameter, state.controls[index].target.parameter != parameter { continue }
+                state.controls[index].rearm()
+            }
+        }
+    }
+
+    func takeMovedNodes() -> Set<UUID> {
+        // Room for every target, so the lock below never grows it. Only the main actor changes the
+        // table, so it cannot grow in between; if it did, the rest would wait for the next call.
+        var nodes: [UUID] = []
+        nodes.reserveCapacity(state.withLock { $0.controls.count })
+        state.withLock { state in
+            for index in state.controls.indices where state.controls[index].moved {
+                guard nodes.count < nodes.capacity else { break }
+                nodes.append(state.controls[index].target.node)
+                state.controls[index].moved = false
+            }
+        }
+        return Set(nodes)
+    }
+
+    func takeoverHints() -> [ControlKey: TakeoverHint] {
+        // Room for every target, as in `takeMovedNodes`. Copying a knob retains its source's name and
+        // makes nothing.
+        var hints: [(ControlKey, TakeoverHint)] = []
+        hints.reserveCapacity(state.withLock { $0.controls.count })
+        state.withLock { state in
+            for index in state.controls.indices {
+                guard let hint = state.controls[index].waitingHint else { continue }
+                guard hints.count < hints.capacity else { break }
+                let key = ControlKey(
+                    node: state.controls[index].target.node, parameter: state.controls[index].target.parameter,
+                    knob: state.controls[index].target.knob
+                )
+                hints.append((key, hint))
+            }
+        }
+        return Dictionary(hints, uniquingKeysWith: { first, _ in first })
+    }
+
+    func setLearning(_ on: Bool) {
+        var forgotten: ControlKnob?
+        state.withLock { state in
+            state.isLearning = on
+            if !on { swap(&state.learnedKnob, &forgotten) }
+        }
+    }
+
+    func takeLearnedKnob() -> ControlKnob? {
+        var taken: ControlKnob?
+        state.withLock { swap(&$0.learnedKnob, &taken) }
+        return taken
     }
 
     func setRoutes(_ routes: [MIDIRouteTarget]) {
@@ -269,14 +675,21 @@ private final class MIDIRouting: Sendable {
         }
     }
 
-    /// Past this, no event reaches the engine, not even one already on its way.
+    /// Past this, no event reaches the engine, not even one already on its way, and no knob reaches
+    /// a plugin, but for a write already past its last check.
     func close() {
         var replaced: [MIDIRouteTarget] = []
         var counts: [UUID: UInt64] = [:]
+        var controls: [Control] = []
+        var forgotten: ControlKnob?
         state.withLock { state in
             swap(&state.routes, &replaced)
             swap(&state.eventCounts, &counts)
             state.clockSource = nil
+            swap(&state.controls, &controls)
+            state.controlsGeneration &+= 1
+            state.isLearning = false
+            swap(&state.learnedKnob, &forgotten)
         }
     }
 
@@ -300,6 +713,38 @@ private final class MIDIRouting: Sendable {
             let seconds = hostSeconds()
             forEachEvent(in: list) { handle($0, fromSource: source.name, at: seconds) }
         }
+    }
+}
+
+/// One parameter a control change reaches, on the stack between the passes of `handle`. Plain
+/// values only, so the scratch needs no cleanup.
+private struct PendingWrite {
+    /// Retained in the first pass, so a table replaced meanwhile cannot free the plugin.
+    var plugin: Unmanaged<HostedPlugin>
+    var unit: AudioUnit
+    /// The target in the table, and -1 once the second pass decided not to write.
+    var index: Int32
+    var parameter: AudioUnitParameterID
+    /// The parameter's value read in between, then the value to write, then what was read back after it.
+    var value: AudioUnitParameterValue
+    /// `ControlWrite.readsBack`.
+    var readsBack: Bool
+}
+
+/// What one control change puts on the stack. Swift keeps a temporary allocation of up to 1 KiB there
+/// and takes anything larger from the heap, so this must stay within that.
+let controlChangeScratchBytes = MemoryLayout<PendingWrite>.stride * maxWritesPerControlChange
+
+extension ControlKnob {
+    /// By value, without making the knob of the message. The channel and controller come from the
+    /// status byte, so a knob decoded with numbers out of range never matches.
+    fileprivate func matches(heard source: String, status: UInt8, controller: UInt8) -> Bool {
+        self.controller == Int(controller) && channel == Int(status & 0x0F) + 1 && isSameName(self.source, source)
+    }
+
+    /// By bytes, like `matches`, since this runs under the lock.
+    fileprivate func isSame(as other: ControlKnob) -> Bool {
+        controller == other.controller && channel == other.channel && isSameName(source, other.source)
     }
 }
 

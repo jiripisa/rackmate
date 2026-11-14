@@ -24,6 +24,19 @@ extension HostedPluginError: LocalizedError {
     }
 }
 
+/// A parameter of a plugin as MIDI learn needs it: the id to read and write it by, a name to show, and its range.
+public struct PluginParameter: Equatable, Sendable {
+    public var id: AudioUnitParameterID
+    public var name: String
+    public var range: ParameterRange
+
+    public init(id: AudioUnitParameterID, name: String, range: ParameterRange) {
+        self.id = id
+        self.name = name
+        self.range = range
+    }
+}
+
 /// How long the interface gets to draw before a plugin holds up the main thread: a little over a frame.
 private let drawPause = Duration.milliseconds(20)
 
@@ -38,6 +51,8 @@ public final class HostedPlugin: @unchecked Sendable {
 
     public let id: PluginID
     public let audioUnit: AudioUnit
+    /// A version 3 unit, which runs in process through the system's v2 bridge.
+    public let isAUv3: Bool
     /// Channels per bus: 2, or 1 when `configure` found the unit refuses stereo.
     public private(set) var channelCount: UInt32 = 2
     private var isInitialized = false
@@ -45,9 +60,10 @@ public final class HostedPlugin: @unchecked Sendable {
     /// not own it. `releaseView` lets go of it.
     var viewOwner: AnyObject?
 
-    private init(id: PluginID, audioUnit: AudioUnit) {
+    private init(id: PluginID, audioUnit: AudioUnit, isAUv3: Bool) {
         self.id = id
         self.audioUnit = audioUnit
+        self.isAUv3 = isAUv3
     }
 
     /// The last reference can drop on any thread. No render reaches the unit by then, because the
@@ -82,7 +98,10 @@ public final class HostedPlugin: @unchecked Sendable {
             }
             AudioComponentInstantiate(component, .loadInProcess, completion)
         }
-        return HostedPlugin(id: id, audioUnit: unit.unit)
+        var found = AudioComponentDescription()
+        AudioComponentGetDescription(component, &found)
+        let isAUv3 = found.componentFlags & AudioComponentFlags.isV3AudioUnit.rawValue != 0
+        return HostedPlugin(id: id, audioUnit: unit.unit, isAUv3: isAUv3)
     }
 
     /// Frees the main thread long enough to draw, so a "Loading" state shows before a plugin holds it up.
@@ -174,7 +193,58 @@ public final class HostedPlugin: @unchecked Sendable {
         }
     }
 
+    /// The plugin's parameters (global scope, element 0), in the order it lists them. Reads properties only.
+    @MainActor
+    public func parameters() -> [PluginParameter] {
+        var size: UInt32 = 0
+        guard AudioUnitGetPropertyInfo(audioUnit, kAudioUnitProperty_ParameterList, kAudioUnitScope_Global, 0, &size, nil) == noErr,
+            size > 0
+        else { return [] }
+        var ids = [AudioUnitParameterID](repeating: 0, count: Int(size) / MemoryLayout<AudioUnitParameterID>.size)
+        guard AudioUnitGetProperty(audioUnit, kAudioUnitProperty_ParameterList, kAudioUnitScope_Global, 0, &ids, &size) == noErr
+        else { return [] }
+        return ids.prefix(Int(size) / MemoryLayout<AudioUnitParameterID>.size).compactMap { parameter($0) }
+    }
+
+    /// One parameter by id, or nil when the plugin has none by that id.
+    @MainActor
+    public func parameter(_ id: AudioUnitParameterID) -> PluginParameter? {
+        var info = AudioUnitParameterInfo()
+        var size = UInt32(MemoryLayout<AudioUnitParameterInfo>.size)
+        guard AudioUnitGetProperty(audioUnit, kAudioUnitProperty_ParameterInfo, kAudioUnitScope_Global, id, &info, &size) == noErr
+        else { return nil }
+        let flags = info.flags
+        var name: String
+        if flags.contains(.flag_HasCFNameString), let cfName = info.cfNameString {
+            // The plugin hands over its own string; only when it says so is it ours to release.
+            name = (flags.contains(.flag_CFNameRelease) ? cfName.takeRetainedValue() : cfName.takeUnretainedValue()) as String
+        } else {
+            name = withUnsafeBytes(of: info.name) { raw in
+                String(decoding: raw.prefix { $0 != 0 }, as: UTF8.self)
+            }
+        }
+        let unit = info.unit
+        let range = ParameterRange(
+            minimum: info.minValue, maximum: info.maxValue, scale: Self.scale(of: flags),
+            isStepped: unit == .indexed || unit == .boolean
+        )
+        return PluginParameter(id: id, name: name, range: range)
+    }
+
     // MARK: - Private
+
+    /// The display flags are one masked field, not independent bits.
+    private static func scale(of flags: AudioUnitParameterOptions) -> ParameterScale {
+        switch flags.intersection(.flag_DisplayMask) {
+        case .flag_DisplayLogarithmic: .logarithmic
+        case .flag_DisplayExponential: .exponential
+        case .flag_DisplaySquareRoot: .squareRoot
+        case .flag_DisplaySquared: .squared
+        case .flag_DisplayCubeRoot: .cubeRoot
+        case .flag_DisplayCubed: .cubed
+        default: .linear
+        }
+    }
 
     private struct UnitBox: @unchecked Sendable {
         let unit: AudioUnit

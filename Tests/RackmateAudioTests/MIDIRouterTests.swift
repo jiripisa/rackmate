@@ -1,3 +1,4 @@
+import AudioToolbox
 import CRenderCore
 import CoreMIDI
 import Foundation
@@ -74,6 +75,70 @@ private func allOffReporters() async throws -> [StripSpec] {
 
 /// What an all-off reporter shows once a controller came on each of the 16 MIDI channels.
 private let everyChannel: Float = 0.16
+
+private let knob74 = ControlKnob(source: "A", channel: 1, controller: 74)
+
+/// A control change on MIDI channel `channel`, 1 to 16.
+private func controlChange(_ controller: UInt8, _ value: UInt8, channel: UInt8 = 1) -> MIDIEvent {
+    .channelVoice(status: 0xB0 | (channel - 1), data1: controller, data2: value)
+}
+
+/// Test Controls, outside any graph: a mapped write needs no render.
+@MainActor
+private func testControls() async throws -> HostedPlugin {
+    try await loadPlugin(type: "aufx", subtype: "PlCt")
+}
+
+/// By name, since the v2 bridge numbers the parameters by itself.
+@MainActor
+private func parameter(_ name: String, of plugin: HostedPlugin) throws -> PluginParameter {
+    try #require(plugin.parameters().first { $0.name == name })
+}
+
+/// `knob` driving `parameter` of `plugin` over `from` to `to`. `readsBack` overrides what the unit's kind
+/// decides.
+private func control(
+    _ knob: ControlKnob, node: UUID, _ parameter: PluginParameter, of plugin: HostedPlugin, from: Double = 0, to: Double = 1,
+    readsBack: Bool? = nil
+) -> ControlTarget {
+    ControlTarget(
+        knob: knob, node: node, parameter: parameter.id,
+        write: ControlWrite(plugin: plugin, range: parameter.range, from: from, to: to, readsBack: readsBack)
+    )
+}
+
+private func value(of parameter: PluginParameter, in plugin: HostedPlugin) -> Float {
+    var value: AudioUnitParameterValue = 0
+    AudioUnitGetParameter(plugin.audioUnit, parameter.id, kAudioUnitScope_Global, 0, &value)
+    return value
+}
+
+private func set(_ parameter: PluginParameter, of plugin: HostedPlugin, to value: Float) {
+    AudioUnitSetParameter(plugin.audioUnit, parameter.id, kAudioUnitScope_Global, 0, value, 0)
+}
+
+/// The way a sequencer's program change or the plugin's own modulation would: not through the router.
+private func setElsewhere(_ parameter: PluginParameter, of plugin: HostedPlugin, to value: Float) {
+    var address = AudioUnitParameter(mAudioUnit: plugin.audioUnit, mParameterID: parameter.id, mScope: kAudioUnitScope_Global, mElement: 0)
+    AUParameterSet(nil, nil, &address, value, 0)
+}
+
+/// Sends knob 74 through `positions` and reads `parameter` after each. A v3 unit holds a read right after
+/// a write for about 30 ms, so this runs off the main actor, as on the CoreMIDI thread, and the clock
+/// polls of other tests keep running.
+private func turn(_ router: MIDIRouter, through positions: [Int], reading parameter: PluginParameter, of plugin: HostedPlugin) async -> [Float] {
+    await withCheckedContinuation { (continuation: CheckedContinuation<[Float], Never>) in
+        DispatchQueue.global(qos: .userInteractive).async {
+            continuation.resume(returning: positions.map { position in
+                router.handle(controlChange(74, UInt8(position)), fromSource: "A", at: 0)
+                return value(of: parameter, in: plugin)
+            })
+        }
+    }
+}
+
+/// Where a knob at `position` puts a parameter mapped 0 to 1 with a linear range of 0 to 1.
+private func mixAt(_ position: Float) -> Float { position / 127 }
 
 /// `messages` go into one packet each, so a message of several words stays whole.
 private func withEventList(_ messages: [[UInt32]], _ body: (UnsafePointer<MIDIEventList>) -> Void) {
@@ -590,6 +655,408 @@ struct MIDIRouterTests {
         }
     }
 
+    // MARK: - Controls
+
+    @Test func aMappedKnobSetsTheParameterAndIsNotRouted() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        try await withRouter(try await twoInstruments()) { router, _ in
+            let node = UUID()
+            router.setRoutes([target("A", .all, slot: 0)])
+            router.setControls([control(knob74, node: node, mix, of: plugin)])
+            // Mix starts at 0.5, so 64 lands on it and takes over at once.
+            router.handle(controlChange(74, 64), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: plugin) - mixAt(64)) < tolerance)
+            #expect(router.eventCount(channel: channelID(ofSlot: 0)) == 0)
+            #expect(router.takeMovedNodes() == [node])
+            #expect(router.takeMovedNodes().isEmpty)
+        }
+    }
+
+    @Test func anUnmappedControlChangeStillGoesToTheInstrument() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        try await withRouter(try await twoInstruments()) { router, _ in
+            router.setRoutes([target("A", .all, slot: 0), target("B", .all, slot: 1)])
+            router.setControls([control(knob74, node: UUID(), mix, of: plugin)])
+            router.handle(controlChange(75, 64), fromSource: "A", at: 0)
+            router.handle(controlChange(74, 64, channel: 2), fromSource: "A", at: 0)
+            router.handle(.channelVoice(status: 0x90, data1: 74, data2: 64), fromSource: "A", at: 0)
+            router.handle(controlChange(74, 64), fromSource: "B", at: 0)
+            #expect(router.eventCount(channel: channelID(ofSlot: 0)) == 3)
+            #expect(router.eventCount(channel: channelID(ofSlot: 1)) == 1)
+            #expect(value(of: mix, in: plugin) == 0.5)
+            #expect(router.takeMovedNodes().isEmpty)
+        }
+    }
+
+    @Test func aKnobWithoutAWriteIsSwallowed() async throws {
+        try await withRouter(try await twoInstruments()) { router, _ in
+            router.setRoutes([target("A", .all, slot: 0)])
+            router.setControls([ControlTarget(knob: knob74, node: UUID(), parameter: 1, write: nil)])
+            router.handle(controlChange(74, 64), fromSource: "A", at: 0)
+            #expect(router.eventCount(channel: channelID(ofSlot: 0)) == 0)
+            #expect(router.takeMovedNodes().isEmpty)
+        }
+    }
+
+    @Test func oneKnobWritesEveryMappedParameter() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        let cutoff = try parameter("Cutoff", of: plugin)
+        try await withRouter([]) { router, _ in
+            let node = UUID()
+            router.setControls([
+                control(knob74, node: node, mix, of: plugin),
+                control(knob74, node: node, cutoff, of: plugin, from: 1, to: 0),
+            ])
+            // Mix takes over at 64. Cutoff, at 1000 Hz, sits near 55 on its reversed range and waits.
+            router.handle(controlChange(74, 64), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: plugin) - mixAt(64)) < tolerance)
+            #expect(value(of: cutoff, in: plugin) == 1000)
+
+            // Crossing 55 takes Cutoff over as well.
+            router.handle(controlChange(74, 50), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: plugin) - mixAt(50)) < tolerance)
+            #expect(abs(value(of: cutoff, in: plugin) - cutoff.range.value(atFraction: 1 - 50.0 / 127)) < 0.01)
+            #expect(router.takeMovedNodes() == [node])
+        }
+    }
+
+    @Test func theKnobWaitsForTheParameter() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        set(mix, of: plugin, to: 0.9)
+        try await withRouter([]) { router, _ in
+            let node = UUID()
+            router.setControls([control(knob74, node: node, mix, of: plugin)])
+            router.handle(controlChange(74, 10), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: plugin) - 0.9) < tolerance)
+            #expect(router.takeMovedNodes().isEmpty)
+
+            router.handle(controlChange(74, 127), fromSource: "A", at: 0)
+            #expect(value(of: mix, in: plugin) == 1)
+            #expect(router.takeMovedNodes() == [node])
+        }
+    }
+
+    @Test func rearmMakesTheKnobWaitAgain() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        let cutoff = try parameter("Cutoff", of: plugin)
+        try await withRouter([]) { router, _ in
+            let node = UUID()
+            router.setControls([control(knob74, node: node, mix, of: plugin)])
+            router.handle(controlChange(74, 64), fromSource: "A", at: 0)
+            router.rearmControls(node: node)
+            router.handle(controlChange(74, 100), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: plugin) - mixAt(64)) < tolerance)
+
+            // Taken over again by moving across 64, it follows through a rearm of another parameter or
+            // another node.
+            router.handle(controlChange(74, 60), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: plugin) - mixAt(60)) < tolerance)
+            router.rearmControls(node: node, parameter: cutoff.id)
+            router.rearmControls(node: UUID())
+            router.handle(controlChange(74, 90), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: plugin) - mixAt(90)) < tolerance)
+
+            router.rearmControls(node: node, parameter: mix.id)
+            router.handle(controlChange(74, 30), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: plugin) - mixAt(90)) < tolerance)
+        }
+    }
+
+    /// With `readsBack`, as for a v2 unit, the knob also keeps what Mix read back after each write, and a
+    /// move from outside is far from both.
+    @Test(arguments: [false, true])
+    func aParameterMovedElsewhereMakesTheKnobWaitAgain(readsBack: Bool) async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        try await withRouter([]) { router, _ in
+            let node = UUID()
+            router.setControls([control(knob74, node: node, mix, of: plugin, readsBack: readsBack)])
+            router.handle(controlChange(74, 64), fromSource: "A", at: 0)
+            router.handle(controlChange(74, 70), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: plugin) - mixAt(70)) < tolerance)
+            _ = router.takeMovedNodes()
+
+            // 0.9 is near 114 on the knob, so a move near the old position writes nothing.
+            setElsewhere(mix, of: plugin, to: 0.9)
+            router.handle(controlChange(74, 72), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: plugin) - 0.9) < tolerance)
+            #expect(router.takeMovedNodes().isEmpty)
+
+            router.handle(controlChange(74, 120), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: plugin) - mixAt(120)) < tolerance)
+            #expect(router.takeMovedNodes() == [node])
+        }
+    }
+
+    @Test func aPluginThatRoundsWhatItReadsBackKeepsFollowing() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        try await withRouter([]) { router, _ in
+            router.setControls([control(knob74, node: UUID(), mix, of: plugin)])
+            router.handle(controlChange(74, 64), fromSource: "A", at: 0)
+            // Rounded to two places, less than one knob step away from what the knob wrote.
+            setElsewhere(mix, of: plugin, to: 0.5)
+            router.handle(controlChange(74, 100), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: plugin) - mixAt(100)) < tolerance)
+        }
+    }
+
+    @Test func aQuantizedParameterKeepsFollowingATurningKnob() async throws {
+        let plugin = try await testControls()
+        let steps = try parameter("Steps", of: plugin)
+        try await withRouter([]) { router, _ in
+            // Read back after each write, as for a v2 unit; Test Controls is a v3 unit, which is not.
+            router.setControls([control(knob74, node: UUID(), steps, of: plugin, readsBack: true)])
+            let positions = Array(stride(from: 0, through: 125, by: 5))
+            let read = await turn(router, through: positions, reading: steps, of: plugin)
+            #expect(read == positions.map { (Float($0) / 127 * 3).rounded() / 3 })
+        }
+    }
+
+    @Test func aV3UnitGetsNoReadAfterAWrite() async throws {
+        let plugin = try await testControls()
+        #expect(plugin.isAUv3)
+        let steps = try parameter("Steps", of: plugin)
+        try await withRouter([]) { router, _ in
+            router.setControls([control(knob74, node: UUID(), steps, of: plugin)])
+            // Without a read after the write, the snapped read-back of 10 looks like a move made another
+            // way, and the knob waits again for a value it never passes: the known cost for v3 units.
+            let positions = Array(stride(from: 0, through: 125, by: 5))
+            let read = await turn(router, through: positions, reading: steps, of: plugin)
+            #expect(read == positions.map { _ in 0 })
+        }
+    }
+
+    @Test func aNewTableKeepsTheTakeoverOfATargetThatStays() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        let cutoff = try parameter("Cutoff", of: plugin)
+        try await withRouter([]) { router, _ in
+            let node = UUID()
+            router.setControls([control(knob74, node: node, mix, of: plugin)])
+            router.handle(controlChange(74, 64), fromSource: "A", at: 0)
+
+            router.setControls([control(knob74, node: node, cutoff, of: plugin), control(knob74, node: node, mix, of: plugin)])
+            router.handle(controlChange(74, 100), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: plugin) - mixAt(100)) < tolerance)
+            #expect(value(of: cutoff, in: plugin) == 1000)
+
+            // Another knob on the same parameter is another target, and it waits.
+            let knob75 = ControlKnob(source: "A", channel: 1, controller: 75)
+            router.setControls([control(knob75, node: node, mix, of: plugin)])
+            router.handle(controlChange(75, 10), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: plugin) - mixAt(100)) < tolerance)
+        }
+    }
+
+    // MARK: - Takeover hints
+
+    @Test func aWaitingKnobSaysWhichWayToTurn() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        try await withRouter([]) { router, _ in
+            let node = UUID()
+            let key = ControlKey(node: node, parameter: mix.id, knob: knob74)
+            router.setControls([control(knob74, node: node, mix, of: plugin)])
+            // Mix starts at 0.5, so the knob position is about 64.
+            router.handle(controlChange(74, 10), fromSource: "A", at: 0)
+            #expect(router.takeoverHints() == [key: .turnUp])
+
+            // Going straight from 10 to 100 would cross 64 and take over.
+            router.rearmControls(node: node)
+            router.handle(controlChange(74, 100), fromSource: "A", at: 0)
+            #expect(router.takeoverHints() == [key: .turnDown])
+        }
+    }
+
+    @Test func aKnobThatTookOverHasNoHint() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        try await withRouter([]) { router, _ in
+            router.setControls([control(knob74, node: UUID(), mix, of: plugin)])
+            router.handle(controlChange(74, 10), fromSource: "A", at: 0)
+            router.handle(controlChange(74, 70), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: plugin) - mixAt(70)) < tolerance)
+            #expect(router.takeoverHints().isEmpty)
+        }
+    }
+
+    @Test func aNewTableStartsWithMoveTheKnob() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        try await withRouter([]) { router, _ in
+            let node = UUID()
+            let knob75 = ControlKnob(source: "A", channel: 1, controller: 75)
+            router.setControls([
+                control(knob74, node: node, mix, of: plugin),
+                // A row without a write is dimmed and shows nothing.
+                ControlTarget(knob: knob75, node: node, parameter: mix.id, write: nil),
+            ])
+            #expect(router.takeoverHints() == [ControlKey(node: node, parameter: mix.id, knob: knob74): .moveKnob])
+        }
+    }
+
+    @Test func equalEndsShowNoHint() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        try await withRouter([]) { router, _ in
+            let node = UUID()
+            router.setControls([control(knob74, node: node, mix, of: plugin, from: 0.3, to: 0.3)])
+            #expect(router.takeoverHints().isEmpty)
+            router.rearmControls(node: node)
+            #expect(router.takeoverHints().isEmpty)
+        }
+    }
+
+    @Test func aRearmShowsMoveTheKnob() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        try await withRouter([]) { router, _ in
+            let node = UUID()
+            router.setControls([control(knob74, node: node, mix, of: plugin)])
+            router.handle(controlChange(74, 64), fromSource: "A", at: 0)
+            #expect(router.takeoverHints().isEmpty)
+            router.rearmControls(node: node, parameter: mix.id)
+            #expect(router.takeoverHints() == [ControlKey(node: node, parameter: mix.id, knob: knob74): .moveKnob])
+        }
+    }
+
+    @Test func aNewTableKeepsTheHintOfATargetThatStaysAsItWas() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        let cutoff = try parameter("Cutoff", of: plugin)
+        try await withRouter([]) { router, _ in
+            let node = UUID()
+            let mixKey = ControlKey(node: node, parameter: mix.id, knob: knob74)
+            router.setControls([control(knob74, node: node, mix, of: plugin)])
+            router.handle(controlChange(74, 10), fromSource: "A", at: 0)
+
+            router.setControls([control(knob74, node: node, mix, of: plugin), control(knob74, node: node, cutoff, of: plugin)])
+            #expect(router.takeoverHints() == [mixKey: .turnUp, ControlKey(node: node, parameter: cutoff.id, knob: knob74): .moveKnob])
+
+            // A new range moves the knob position of the value, so the way is not known until the next move.
+            router.setControls([control(knob74, node: node, mix, of: plugin, from: 0, to: 0.5)])
+            #expect(router.takeoverHints() == [mixKey: .moveKnob])
+        }
+    }
+
+    @Test func noWriteReachesAPluginAfterItsTableIsReplaced() async throws {
+        var plugin: HostedPlugin? = try await testControls()
+        weak let unit = plugin
+        let mix = try parameter("Mix", of: try #require(plugin))
+        try await withRouter([]) { router, _ in
+            let controls = try #require(plugin)
+            router.setControls([control(knob74, node: UUID(), mix, of: controls)])
+            router.handle(controlChange(74, 64), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: controls) - mixAt(64)) < tolerance)
+
+            router.setControls([])
+            router.handle(controlChange(74, 100), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: controls) - mixAt(64)) < tolerance)
+            #expect(router.takeMovedNodes().isEmpty)
+        }
+        plugin = nil
+        #expect(unit == nil)
+    }
+
+    @Test func aSourceThatComesBackByNameStillWrites() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        try await withRouter([]) { router, _ in
+            // The table and each connection hold the name in strings of their own.
+            let name = ["OXI", "E16"].joined(separator: " ")
+            router.setControls([control(ControlKnob(source: name, channel: 1, controller: 74), node: UUID(), mix, of: plugin)])
+            await deliver([0x20B0_4A40], source: router.sourceTag(named: "OXI E16"), to: router.makeReceiveBlock())
+            #expect(abs(value(of: mix, in: plugin) - mixAt(64)) < tolerance)
+
+            // Back after a refresh, under its name and a new receive block.
+            let back = String(decoding: Array("OXI E16".utf8), as: UTF8.self)
+            await deliver([0x20B0_4A64], source: router.sourceTag(named: back), to: router.makeReceiveBlock())
+            #expect(abs(value(of: mix, in: plugin) - mixAt(100)) < tolerance)
+        }
+    }
+
+    @Test func learningKeepsTheNewestControlChange() async throws {
+        try await withRouter([]) { router, _ in
+            router.setControls([ControlTarget(knob: knob74, node: UUID(), parameter: 1, write: nil)])
+            router.setLearning(true)
+            router.handle(controlChange(71, 10, channel: 3), fromSource: "B", at: 0)
+            router.handle(controlChange(74, 20), fromSource: "A", at: 0)
+            #expect(router.takeLearnedKnob() == knob74)
+            #expect(router.takeLearnedKnob() == nil)
+
+            router.handle(noteOnChannel1, fromSource: "A", at: 0)
+            #expect(router.takeLearnedKnob() == nil)
+            router.handle(controlChange(71, 10, channel: 3), fromSource: "B", at: 0)
+            #expect(router.takeLearnedKnob() == ControlKnob(source: "B", channel: 3, controller: 71))
+        }
+    }
+
+    @Test func learningOffKeepsNothing() async throws {
+        try await withRouter([]) { router, _ in
+            router.handle(controlChange(74, 20), fromSource: "A", at: 0)
+            #expect(router.takeLearnedKnob() == nil)
+
+            router.setLearning(true)
+            router.handle(controlChange(74, 20), fromSource: "A", at: 0)
+            router.setLearning(false)
+            #expect(router.takeLearnedKnob() == nil)
+            router.handle(controlChange(74, 30), fromSource: "A", at: 0)
+            #expect(router.takeLearnedKnob() == nil)
+        }
+    }
+
+    @Test func whileLearningNoControlChangeReachesAnInstrument() async throws {
+        try await withRouter(try await twoInstruments()) { router, _ in
+            router.setRoutes([target("A", .all, slot: 0)])
+            router.setLearning(true)
+            router.handle(controlChange(74, 64), fromSource: "A", at: 0)
+            #expect(router.eventCount(channel: channelID(ofSlot: 0)) == 0)
+            #expect(router.takeLearnedKnob() == knob74)
+
+            router.handle(noteOnChannel1, fromSource: "A", at: 0)
+            #expect(router.eventCount(channel: channelID(ofSlot: 0)) == 1)
+        }
+    }
+
+    @Test func afterLearningControlChangesGoAgain() async throws {
+        try await withRouter(try await twoInstruments()) { router, _ in
+            router.setRoutes([target("A", .all, slot: 0)])
+            router.setLearning(true)
+            router.handle(controlChange(74, 64), fromSource: "A", at: 0)
+            router.setLearning(false)
+            router.handle(controlChange(74, 64), fromSource: "A", at: 0)
+            #expect(router.eventCount(channel: channelID(ofSlot: 0)) == 1)
+        }
+    }
+
+    @Test func closingDropsTheControlsAndLearning() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        try await withRouter([]) { router, _ in
+            router.setControls([control(knob74, node: UUID(), mix, of: plugin)])
+            router.setLearning(true)
+            router.close()
+
+            router.setControls([control(knob74, node: UUID(), mix, of: plugin)])
+            router.setLearning(true)
+            router.handle(controlChange(74, 64), fromSource: "A", at: 0)
+            #expect(value(of: mix, in: plugin) == 0.5)
+            #expect(router.takeLearnedKnob() == nil)
+            #expect(router.takeMovedNodes().isEmpty)
+        }
+    }
+
+    @Test func theScratchOfAControlChangeStaysOnTheStack() {
+        // Swift puts a temporary allocation of up to 1 KiB on the stack, and anything larger on the heap.
+        #expect(controlChangeScratchBytes <= 1024)
+    }
+
     // MARK: - Event lists
 
     @Test func eventListsDecodeEveryMessage() {
@@ -665,6 +1132,43 @@ struct MIDIRouterTests {
             await renderer.value
             #expect(sending.renders.load(ordering: .relaxed) > 0)
             #expect(rendering.renders.load(ordering: .relaxed) > 0)
+        }
+    }
+
+    @Test func controlsChangeWhileKnobsTurn() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        let cutoff = try parameter("Cutoff", of: plugin)
+        try await withRouter(try await twoInstruments()) { router, _ in
+            let node = UUID()
+            let tables = [
+                [control(knob74, node: node, mix, of: plugin), control(knob74, node: node, cutoff, of: plugin, from: 1, to: 0)],
+                [control(knob74, node: node, mix, of: plugin)],
+                [ControlTarget(knob: knob74, node: node, parameter: mix.id, write: nil)],
+                [],
+            ]
+            router.setRoutes([target("A", .all, slot: 0)])
+            let sending = RenderProgress()
+            let sender = Task.detached {
+                var value: UInt8 = 0
+                while !sending.stop.load(ordering: .relaxed) {
+                    value = (value &+ 7) % 128
+                    router.handle(controlChange(74, value), fromSource: "A", at: 0)
+                    router.handle(controlChange(75, value), fromSource: "A", at: 0)
+                    sending.renders.add(1, ordering: .relaxed)
+                }
+            }
+            for round in 0..<2000 {
+                router.setControls(tables[round % tables.count])
+                router.setLearning(round % 3 != 0)
+                if round % 5 == 0 { router.rearmControls(node: node) }
+                _ = router.takeMovedNodes()
+                _ = router.takeLearnedKnob()
+                await Task.yield()
+            }
+            sending.stop.store(true, ordering: .relaxed)
+            await sender.value
+            #expect(sending.renders.load(ordering: .relaxed) > 0)
         }
     }
 

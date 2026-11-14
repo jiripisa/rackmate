@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- MIDI learn: map knobs of a MIDI controller to plugin parameters, with range, direction and soft takeover, in a new MIDI CONTROL strip under each plugin window. A row that waits for takeover says which way to turn the knob. While Learn is on, control changes reach no instrument.
+
 ## 1.1.2 — 2026-11-01
 
 - Plugins protected by iLok, such as Zen Delay Virtual, no longer close the app when they load.

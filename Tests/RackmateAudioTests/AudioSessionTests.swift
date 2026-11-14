@@ -68,6 +68,39 @@ private func runningRate(of plugin: HostedPlugin?) throws -> Double {
     return rate
 }
 
+private let controlsID = PluginID(type: "aufx", subtype: "PlCt", manufacturer: "Plug")
+private let mixKnob = ControlKnob(source: "Knobs", channel: 1, controller: 74)
+private let knobsRoute = MIDIRoute(sourceName: "Knobs", channel: .all)
+
+/// `mixKnob` turned to `value`.
+private func turn(to value: UInt8) -> MIDIEvent {
+    .channelVoice(status: 0xB0, data1: 74, data2: value)
+}
+
+/// Test Controls' Mix, found by name, since the v2 bridge numbers the parameters by itself. It starts at
+/// 0.5, so the knob at 64 lands on it and takes over at once.
+@MainActor
+private func mixParameter() async throws -> PluginParameter {
+    registerTestUnits()
+    return try #require(try await HostedPlugin.load(controlsID).parameters().first { $0.name == "Mix" })
+}
+
+/// A standalone Test Controls with no input, its `parameter` driven by `mixKnob`, or with no knob.
+private func controlsChannel(mapping parameter: AudioUnitParameterID?) -> Channel {
+    let controls = parameter.map { [ControlMapping(knob: mixKnob, parameter: $0, parameterName: "Mix")] } ?? []
+    return Channel(
+        kind: .effect, slot: PluginSlot(plugin: controlsID, displayName: "Controls", controls: controls), audioIn: nil, audioOut: out01)
+}
+
+private func value(of parameter: PluginParameter, in plugin: HostedPlugin?) throws -> AudioUnitParameterValue {
+    var value: AudioUnitParameterValue = 0
+    AudioUnitGetParameter(try #require(plugin).audioUnit, parameter.id, kAudioUnitScope_Global, 0, &value)
+    return value
+}
+
+/// Where `mixKnob` at `position` puts Mix, whose range is 0 to 1.
+private func mixAt(_ position: Float) -> Float { position / 127 }
+
 private struct StartFailed: Error {}
 
 /// Stands in for the AUHAL unit, so a session can run without a device.
@@ -515,6 +548,172 @@ struct AudioSessionTests {
 
         await gate.open()
         await edit.value
+    }
+
+    // MARK: - Knobs
+
+    @Test("Knobs follow the configuration")
+    func controlsFollowTheConfiguration() async throws {
+        let mix = try await mixParameter()
+        let bench = Bench()
+        defer { bench.session.close() }
+        var channel = controlsChannel(mapping: mix.id)
+        await bench.session.open(configuration(channel), settings: .defaults)
+        let plugin = bench.session.runner?.plugin(channel: channel.id, effect: nil)
+
+        bench.session.router.handle(turn(to: 64), fromSource: "Knobs", at: 0)
+        #expect(abs(try value(of: mix, in: plugin) - mixAt(64)) < tolerance)
+        #expect(bench.session.router.takeMovedNodes() == [channel.id])
+
+        channel.slot.controls = []
+        await bench.session.update(configuration(channel))
+        bench.session.router.handle(turn(to: 100), fromSource: "Knobs", at: 0)
+
+        #expect(bench.session.runner?.plugin(channel: channel.id, effect: nil) === plugin)
+        #expect(abs(try value(of: mix, in: plugin) - mixAt(64)) < tolerance)
+        #expect(bench.session.router.takeMovedNodes().isEmpty)
+    }
+
+    @Test("A knob is held back while its plugin loads, and drives it once it has")
+    func aControlWaitsForItsPluginToLoad() async throws {
+        let mix = try await mixParameter()
+        let bench = Bench()
+        defer { bench.session.close() }
+        let instrument = instrumentChannel(midiIn: knobsRoute)
+        await bench.session.open(configuration(instrument), settings: .defaults)
+        let runner = try #require(bench.session.runner)
+        let gate = LoadGate()
+        runner.seams.load = { id in
+            await gate.pass()
+            return try await HostedPlugin.load(id)
+        }
+
+        let controls = controlsChannel(mapping: mix.id)
+        let edit = Task { await bench.session.update(configuration(instrument, controls)) }
+        while runner.pendingLoads == 0 { await Task.yield() }
+        bench.session.router.handle(turn(to: 64), fromSource: "Knobs", at: 0)
+        #expect(bench.session.router.eventCount(channel: instrument.id) == 0, "a mapped knob never reaches an instrument")
+        #expect(bench.session.router.takeMovedNodes().isEmpty)
+
+        await gate.open()
+        await edit.value
+        bench.session.router.handle(turn(to: 64), fromSource: "Knobs", at: 0)
+
+        #expect(abs(try value(of: mix, in: runner.plugin(channel: controls.id, effect: nil)) - mixAt(64)) < tolerance)
+        #expect(bench.session.router.takeMovedNodes() == [controls.id])
+        #expect(bench.session.router.eventCount(channel: instrument.id) == 0)
+    }
+
+    @Test("A knob whose parameter the plugin lacks is held back, and the rack plays")
+    func aMissingParameterHoldsItsKnobBack() async throws {
+        let mix = try await mixParameter()
+        let bench = Bench()
+        defer { bench.session.close() }
+        let instrument = instrumentChannel(midiIn: knobsRoute)
+        let controls = controlsChannel(mapping: 12_345)
+
+        await bench.session.open(configuration(instrument, controls), settings: .defaults)
+        bench.session.router.handle(turn(to: 64), fromSource: "Knobs", at: 0)
+
+        let plugin = bench.session.runner?.plugin(channel: controls.id, effect: nil)
+        #expect(plugin != nil)
+        #expect(try value(of: mix, in: plugin) == 0.5)
+        #expect(bench.session.router.eventCount(channel: instrument.id) == 0)
+        #expect(bench.session.router.takeMovedNodes().isEmpty)
+    }
+
+    @Test("A new instance of a plugin waits for its knob again")
+    func aNewInstanceWaitsForItsKnob() async throws {
+        let mix = try await mixParameter()
+        let bench = Bench()
+        defer { bench.session.close() }
+        let channel = controlsChannel(mapping: mix.id)
+        let config = configuration(channel)
+        await bench.session.open(config, settings: .defaults)
+        let before = bench.session.runner?.plugin(channel: channel.id, effect: nil)
+        bench.session.router.handle(turn(to: 64), fromSource: "Knobs", at: 0)
+        bench.session.router.handle(turn(to: 100), fromSource: "Knobs", at: 0)
+        #expect(abs(try value(of: mix, in: before) - mixAt(100)) < tolerance)
+
+        await bench.session.reload(config, settings: .defaults)
+        let after = bench.session.runner?.plugin(channel: channel.id, effect: nil)
+        #expect(after !== before)
+        _ = bench.session.router.takeMovedNodes()
+
+        // The new instance is back at 0.5, so the knob at 100 would make it jump.
+        bench.session.router.handle(turn(to: 100), fromSource: "Knobs", at: 0)
+        #expect(try value(of: mix, in: after) == 0.5)
+        #expect(bench.session.router.takeMovedNodes().isEmpty)
+
+        // Crossing 0.5 on the way down takes it over.
+        bench.session.router.handle(turn(to: 60), fromSource: "Knobs", at: 0)
+        #expect(abs(try value(of: mix, in: after) - mixAt(60)) < tolerance)
+    }
+
+    @Test("A plugin that leaves the rack is not kept by its knob")
+    func aRemovedPluginIsNotKeptByItsKnob() async throws {
+        let mix = try await mixParameter()
+        let bench = Bench()
+        defer { bench.session.close() }
+        let channel = controlsChannel(mapping: mix.id)
+        await bench.session.open(configuration(channel), settings: .defaults)
+        _ = bench.render()
+        weak let plugin = bench.session.runner?.plugin(channel: channel.id, effect: nil)
+        bench.session.router.handle(turn(to: 64), fromSource: "Knobs", at: 0)
+        #expect(abs(try value(of: mix, in: plugin) - mixAt(64)) < tolerance)
+
+        await bench.session.update(configuration())
+        _ = bench.render()
+
+        let deadline = ContinuousClock.now + .seconds(3)
+        while plugin != nil, ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(20)) }
+        #expect(plugin == nil)
+    }
+
+    @Test("Losing the device lets go of what the knobs drive, and its return brings them back")
+    func knobsLetGoWithTheDevice() async throws {
+        let mix = try await mixParameter()
+        let bench = Bench()
+        defer { bench.session.close() }
+        let channel = controlsChannel(mapping: mix.id)
+        await bench.session.open(configuration(channel), settings: .defaults)
+        weak let lost = bench.session.runner?.plugin(channel: channel.id, effect: nil)
+        bench.session.router.handle(turn(to: 64), fromSource: "Knobs", at: 0)
+        #expect(abs(try value(of: mix, in: lost) - mixAt(64)) < tolerance)
+
+        bench.loseDevices()
+        #expect(lost == nil)
+
+        await bench.bringDevice(device("a"))
+        _ = bench.session.router.takeMovedNodes()
+        bench.session.router.handle(turn(to: 64), fromSource: "Knobs", at: 0)
+        #expect(abs(try value(of: mix, in: bench.session.runner?.plugin(channel: channel.id, effect: nil)) - mixAt(64)) < tolerance)
+        #expect(bench.session.router.takeMovedNodes() == [channel.id])
+    }
+
+    @Test("Closing the session lets go of what the knobs drive")
+    func closingTheSessionEmptiesTheControls() async throws {
+        let mix = try await mixParameter()
+        let bench = Bench()
+        let channel = controlsChannel(mapping: mix.id)
+        await bench.session.open(configuration(channel), settings: .defaults)
+        let runner = try #require(bench.session.runner)
+        weak let plugin = runner.plugin(channel: channel.id, effect: nil)
+        bench.session.router.handle(turn(to: 64), fromSource: "Knobs", at: 0)
+        #expect(abs(try value(of: mix, in: plugin) - mixAt(64)) < tolerance, "the knobs hold the plugin")
+        _ = bench.session.router.takeMovedNodes()
+        // The runner lets go of its plugins with the empty graph, while the router is still open.
+        var movedThen: Set<UUID>?
+        runner.seams.installGraph = { engine, strips, count in
+            bench.session.router.handle(turn(to: 80), fromSource: "Knobs", at: 0)
+            movedThen = bench.session.router.takeMovedNodes()
+            return pr_engine_install_graph(engine, strips, count)
+        }
+
+        bench.session.close()
+
+        #expect(movedThen == [])
+        #expect(plugin == nil)
     }
 
     // MARK: - Reloading

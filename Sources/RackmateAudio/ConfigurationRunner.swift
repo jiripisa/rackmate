@@ -57,6 +57,11 @@ public final class ConfigurationRunner {
     /// take seconds to load, and `apply` returns only after that.
     public var onMIDISlotsAssigned: (() -> Void)?
 
+    /// Called each time the running plugins change: when `apply` takes plugins out, and when a load
+    /// puts one in. A plugin `apply` takes out is released no sooner than the next `collectRetired`,
+    /// so whoever holds on to the plugins can let go of it here first.
+    public var onPluginsChanged: (() -> Void)?
+
     var seams = Seams()
     var pendingLoads: Int { loads.count }
 
@@ -118,7 +123,8 @@ public final class ConfigurationRunner {
                 followsTransport[effect.id] = effect.followsTransport
             }
         }
-        for (node, plugin) in hosted where wanted[node]?.plugin != plugin.id {
+        let leaving = hosted.filter { node, plugin in wanted[node]?.plugin != plugin.id }
+        for (node, plugin) in leaving {
             hosted[node] = nil
             outgoing.append(plugin)
         }
@@ -132,6 +138,8 @@ public final class ConfigurationRunner {
         assignMIDISlots()
         installGraph()
         updateStatus()
+        // Nothing since the install waits, so no `collectRetired` has released what left.
+        if !leaving.isEmpty { onPluginsChanged?() }
         onMIDISlotsAssigned?()
 
         resumeSettled()
@@ -139,6 +147,11 @@ public final class ConfigurationRunner {
             await withCheckedContinuation { settling.append($0) }
         }
         collectRetired()
+    }
+
+    /// The running plugin of a channel or effect, by its ID.
+    func plugin(node: UUID) -> HostedPlugin? {
+        hosted[node]
     }
 
     public func plugin(channel: UUID, effect: UUID?) -> HostedPlugin? {
@@ -271,34 +284,38 @@ public final class ConfigurationRunner {
     private func startLoad(_ load: Load) {
         guard loads.insert(load).inserted else { return }
         Task {
-            await perform(load)
+            let isHosted = await perform(load)
             loads.remove(load)
             installGraph()
             updateStatus()
+            if isHosted { onPluginsChanged?() }
             resumeSettled()
         }
     }
 
     /// Host a plugin only if the newest configuration still wants it when it is ready. Otherwise it
-    /// goes with this call: it never reached a graph, so nothing else can hold its unit.
-    private func perform(_ load: Load) async {
+    /// goes with this call: it never reached a graph, so nothing else can hold its unit. True when it
+    /// was hosted.
+    private func perform(_ load: Load) async -> Bool {
         do {
             await takeTurn()
-            guard isWanted(load) else { return }
+            guard isWanted(load) else { return false }
             let plugin = try await seams.load(load.plugin)
             if cache[load.plugin] == nil {
                 cache[load.plugin] = .derive(auType: load.plugin.type, inputBusNames: plugin.inputBusNames)
             }
             await takeTurn()
-            guard let slot = wanted[load.node], slot.plugin == load.plugin else { return }
+            guard let slot = wanted[load.node], slot.plugin == load.plugin else { return false }
             try await seams.prepare(plugin, slot, sampleRate, maxFrames)
-            guard isWanted(load) else { return }
+            guard isWanted(load) else { return false }
             try seams.installCallbacks(plugin, engine)
             setFollowsTransport(of: plugin, at: load.node)
             hosted[load.node] = plugin
             failures[load.node] = nil
+            return true
         } catch {
             if isWanted(load) { failures[load.node] = error }
+            return false
         }
     }
 

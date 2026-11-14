@@ -1082,6 +1082,28 @@ struct RunnerTests {
         }
     }
 
+    @Test func pluginsChangedIsHeardWhenAPluginLandsAndWhenItLeaves() async throws {
+        try await withRunner { runner, _ in
+            let gate = gated(runner)
+            let channel = instrumentChannel()
+            var hosted: [Bool] = []
+            runner.onPluginsChanged = { hosted.append(runner.plugin(channel: channel.id, effect: nil) != nil) }
+
+            let applying = Task { await runner.apply(configuration(channel)) }
+            await gate.waitUntilRequested(1)
+            #expect(hosted.isEmpty)
+            await gate.open(instrumentID)
+            await applying.value
+            #expect(hosted == [true])
+
+            await runner.apply(configuration(channel))
+            #expect(hosted == [true], "nothing changed")
+
+            await runner.apply(configuration())
+            #expect(hosted == [true, false])
+        }
+    }
+
     @Test func applyCollectsWhatIsSafeAtItsStart() async throws {
         try await withRunner { runner, rig in
             pr_engine_set_audio_running(rig.engine, true)

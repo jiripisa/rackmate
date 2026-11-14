@@ -54,6 +54,12 @@ public enum PanelLayout {
         [frame, preferred ?? .zero, fitting].first { $0.width > 0 && $0.height > 0 } ?? fallbackPluginWindowSize
     }
 
+    /// The plugin's view with the MIDI CONTROL strip under it. The view keeps its own size, so the
+    /// window is as wide as the wider of the two and as tall as both.
+    public static func pluginWindowSize(plugin: CGSize, strip: CGSize) -> CGSize {
+        CGSize(width: max(plugin.width, strip.width), height: plugin.height + strip.height)
+    }
+
     /// `openWindow`: from the top left of the mixer, each window a step further, six steps around.
     public static func pluginWindowOffset(_ count: Int) -> CGPoint {
         let step = CGFloat(count % 6)
