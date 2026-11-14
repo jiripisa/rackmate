@@ -398,6 +398,11 @@ private final class TestControls: TestUnit {
         mix.value = 0.5
         mode.value = 0
         tree = AUParameterTree.createTree(withChildren: [cutoff, mix, mode])
+        // The values live here, as they do in a real unit's kernel. Without a provider, an initialized
+        // unit reads a value set through the v2 API back as 0.
+        let values = Mutex(Dictionary(uniqueKeysWithValues: [cutoff, mix, mode].map { ($0.address, $0.value) }))
+        tree.implementorValueObserver = { parameter, value in values.withLock { $0[parameter.address] = value } }
+        tree.implementorValueProvider = { parameter in values.withLock { $0[parameter.address] ?? 0 } }
         try super.init(componentDescription: componentDescription, options: options)
     }
 

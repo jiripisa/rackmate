@@ -52,6 +52,11 @@ public struct ControlMapping: Codable, Equatable, Sendable {
 
     /// The fraction of the parameter's range a knob value 0...127 lands on.
     public func fraction(forKnob value: UInt8) -> Double {
+        Self.fraction(forKnob: value, from: from, to: to)
+    }
+
+    /// The same for a range held apart from its mapping, as the MIDI router holds it.
+    public static func fraction(forKnob value: UInt8, from: Double, to: Double) -> Double {
         // Written as a blend so that 0 and 127 give `from` and `to` exactly.
         let position = Double(value) / 127
         return from * (1 - position) + to * position

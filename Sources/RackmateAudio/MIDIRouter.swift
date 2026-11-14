@@ -1,3 +1,4 @@
+import AudioToolbox
 import CRenderCore
 import CoreMIDI
 import Foundation
@@ -15,6 +16,9 @@ private let allSoundOff: UInt8 = 120
 private let allNotesOff: UInt8 = 123
 private let midiChannels: ClosedRange<UInt8> = 0...15
 
+/// At most this many parameters follow one control change; a knob mapped to more drops the rest.
+private let maxWritesPerControlChange = 32
+
 /// Where the events of one route go, and whose they are.
 public struct MIDIRouteTarget: Equatable, Sendable {
     public var route: MIDIRoute
@@ -29,6 +33,40 @@ public struct MIDIRouteTarget: Equatable, Sendable {
     }
 }
 
+/// A knob mapped to a parameter of a plugin in the rack.
+public struct ControlTarget: Sendable {
+    public var knob: ControlKnob
+    /// The rack node that holds the plugin, for `takeMovedNodes` and `rearmControls`.
+    public var node: UUID
+    public var parameter: AudioUnitParameterID
+    /// Nil while the plugin loads, when it failed or when it lacks the parameter. The knob is still
+    /// swallowed then.
+    public var write: ControlWrite?
+
+    public init(knob: ControlKnob, node: UUID, parameter: AudioUnitParameterID, write: ControlWrite?) {
+        self.knob = knob
+        self.node = node
+        self.parameter = parameter
+        self.write = write
+    }
+}
+
+/// What a knob needs to write its parameter: the plugin, the parameter's range, and the part `from`
+/// to `to` of that range the knob's travel covers.
+public struct ControlWrite: Sendable {
+    public var plugin: HostedPlugin
+    public var range: ParameterRange
+    public var from: Double
+    public var to: Double
+
+    public init(plugin: HostedPlugin, range: ParameterRange, from: Double, to: Double) {
+        self.plugin = plugin
+        self.range = range
+        self.from = from
+        self.to = to
+    }
+}
+
 /// Takes MIDI from every system source to the strips that want it, and follows the clock of one
 /// source. Notes go from the CoreMIDI thread straight into the render core and never wait for the
 /// main actor. The app only listens: it has no output port and sends MIDI to nothing.
@@ -37,6 +75,9 @@ public struct MIDIRouteTarget: Equatable, Sendable {
 /// never hops here and a clock that goes silent still shows. `tempo` is what plugins are told, which
 /// is the last tempo known, or 120 BPM if there has been none. That poll also stops the transport of
 /// a source that went silent without a Stop, and then only a Start or Continue starts it again.
+///
+/// A control change that matches a knob of `setControls` goes to no instrument. It sets the knob's
+/// parameters instead, from the CoreMIDI thread as well, once each has taken over (`Takeover`).
 ///
 /// The router does not own the engine, and must go before the engine does.
 @MainActor
@@ -51,13 +92,26 @@ public final class MIDIRouter {
     public private(set) var tempo = ClockTracker.defaultTempo
 
     private let routing: MIDIRouting
+    @ObservationIgnored private let parameterEvents = ParameterEvents()
     @ObservationIgnored private var input: MIDIInput?
     @ObservationIgnored private var clockPoll: Task<Void, Never>?
+
+    /// The app's one Audio Unit event listener, which sends every mapped write, so that a listener
+    /// watching for the owner's moves can tell them from the knobs'. Its events go to
+    /// `onParameterEvent`. Nil only if the system could not make one; writes then go without it. It
+    /// lasts as long as the router.
+    public var parameterListener: AUEventListenerRef? { routing.parameterListener }
+
+    /// Hears each event of `parameterListener`, on the main actor, until `close`.
+    public var onParameterEvent: ((AudioUnitEvent) -> Void)? {
+        get { parameterEvents.hook }
+        set { if !isClosed { parameterEvents.hook = newValue } }
+    }
 
     /// Without a CoreMIDI client, which is not an error, `sources` stays empty and only `handle`
     /// gets events through.
     public init(engine: OpaquePointer) {
-        routing = MIDIRouting(engine: engine)
+        routing = MIDIRouting(engine: engine, parameterEvents: parameterEvents)
         input = MIDIInput(routing: routing) { [weak self] in
             Task { @MainActor in self?.refreshSources() }
         }
@@ -86,6 +140,7 @@ public final class MIDIRouter {
         clockPoll?.cancel()
         input = nil
         routing.close()
+        parameterEvents.hook = nil
         sources = []
     }
 
@@ -95,6 +150,37 @@ public final class MIDIRouter {
     public func setRoutes(_ routes: [MIDIRouteTarget]) {
         guard !isClosed else { return }
         routing.setRoutes(routes)
+    }
+
+    /// Applies at once, like `setRoutes`. A target with the node, parameter and knob of one in the
+    /// table keeps its takeover and a move `takeMovedNodes` has not reported yet; any other waits for
+    /// its parameter.
+    public func setControls(_ targets: [ControlTarget]) {
+        guard !isClosed else { return }
+        routing.setControls(targets)
+    }
+
+    /// The knobs of `node`, or only those of its `parameter`, wait for the parameter again: after a
+    /// preset is picked, or when the owner moved the parameter in the plugin's window.
+    public func rearmControls(node: UUID, parameter: AudioUnitParameterID? = nil) {
+        routing.rearmControls(node: node, parameter: parameter)
+    }
+
+    /// The nodes a knob wrote to since the last call.
+    public func takeMovedNodes() -> Set<UUID> {
+        routing.takeMovedNodes()
+    }
+
+    /// While on, the newest control change from any source, mapped or not, waits for
+    /// `takeLearnedKnob`. Off forgets it.
+    public func setLearning(_ on: Bool) {
+        guard !isClosed else { return }
+        routing.setLearning(on)
+    }
+
+    /// The knob of the newest control change since learning went on or since the last take.
+    public func takeLearnedKnob() -> ControlKnob? {
+        routing.takeLearnedKnob()
     }
 
     /// How many channel-voice messages the routes have delivered to `channel` since it got its first
@@ -143,6 +229,13 @@ public final class MIDIRouter {
     }
 }
 
+/// Takes the events of the parameter listener to the main actor. The listener comes with the
+/// routing, before the router exists.
+@MainActor
+private final class ParameterEvents {
+    var hook: ((AudioUnitEvent) -> Void)?
+}
+
 /// Names one source in the refCon of its connection, so the CoreMIDI thread gets a name without
 /// looking anything up.
 final class SourceTag: Sendable {
@@ -172,7 +265,27 @@ final class SourceTag: Sendable {
 /// the port's receive block on, whichever source a message came from, the main actor for a route
 /// change, or the test's thread for a `handle` in a test. Every push is under the lock, so none of
 /// these can overlap.
+///
+/// The control table is the one thing the CoreMIDI thread changes in place: takeover, moved flags
+/// and the learned knob are values in it, made on the main actor, so nothing is made under the lock.
+/// Nothing but `State` holds the table, or the first change would copy it. A control change calls
+/// into Audio Units, which take locks of their own, so it never does under this one: it notes its
+/// parameters and retains their plugins under the lock, reads their values outside it, decides under
+/// the lock again, and writes outside it. A table replaced meanwhile writes nothing, but a write that
+/// passed its second check can still land after `setControls` or `close`, on a plugin kept alive by
+/// its own retain.
 private final class MIDIRouting: Sendable {
+
+    private struct Control {
+        var target: ControlTarget
+        var takeover = Takeover()
+        /// Set when the knob wrote, cleared by `takeMovedNodes`.
+        var moved = false
+
+        func isSame(as other: ControlTarget) -> Bool {
+            target.node == other.node && target.parameter == other.parameter && target.knob.isSame(as: other.knob)
+        }
+    }
 
     private struct State {
         var routes: [MIDIRouteTarget] = []
@@ -187,29 +300,58 @@ private final class MIDIRouting: Sendable {
         var reading = ClockTracker().reading
         /// What plugins are told, which outlives any one tracker.
         var tempo = ClockTracker.defaultTempo
+        var controls: [Control] = []
+        /// Moves on with every new table, so a control change that let go of the lock between its
+        /// passes knows its indices still point at the same targets.
+        var controlsGeneration: UInt64 = 0
+        var isLearning = false
+        var learnedKnob: ControlKnob?
     }
 
     private nonisolated(unsafe) let engine: OpaquePointer
+    /// Disposed only with this object, since a write on its way after `close` still sends with it,
+    /// and every `handle` holds this object until it returns.
+    nonisolated(unsafe) let parameterListener: AUEventListenerRef?
     private let secondsPerHostTick: Double
     private let state = Mutex(State())
     /// One per name and never removed, so that a callback carrying a tag finds it alive even after
     /// its source left. The receive block holds this object, so the tags outlive every callback.
     private let tags = Mutex<[String: SourceTag]>([:])
 
-    init(engine: OpaquePointer) {
+    /// On the main actor, whose queue the listener reports on.
+    init(engine: OpaquePointer, parameterEvents: ParameterEvents) {
         self.engine = engine
         var timebase = mach_timebase_info_data_t()
         mach_timebase_info(&timebase)
         secondsPerHostTick = Double(timebase.numer) / Double(timebase.denom) / 1e9
+        var listener: AUEventListenerRef?
+        let status = AUEventListenerCreateWithDispatchQueue(&listener, 0, 0, .main) { _, event, _, _ in
+            let event = event.pointee
+            MainActor.assumeIsolated { parameterEvents.hook?(event) }
+        }
+        if status != noErr { logger.error("Cannot create a parameter listener: \(status)") }
+        parameterListener = status == noErr ? listener : nil
+    }
+
+    /// Can run on the CoreMIDI thread, when the receive block lets go last.
+    deinit {
+        guard let parameterListener else { return }
+        nonisolated(unsafe) let listener = parameterListener
+        if Thread.isMainThread {
+            AUListenerDispose(listener)
+        } else {
+            DispatchQueue.main.async { AUListenerDispose(listener) }
+        }
     }
 
     func handle(_ event: MIDIEvent, fromSource source: String, at seconds: Double) {
+        if case .channelVoice(let status, let data1, let data2) = event, status & 0xF0 == controlChange {
+            handleControlChange(status: status, controller: data1, value: data2, fromSource: source)
+            return
+        }
         state.withLock { state in
             if case .channelVoice(let status, let data1, let data2) = event {
-                for target in state.routes where isSameName(target.route.sourceName, source) && target.route.channel.matches(status: status) {
-                    pr_engine_push_midi(engine, target.slot, status, data1, data2)
-                    state.eventCounts[target.channel, default: 0] &+= 1
-                }
+                route(status: status, data1: data1, data2: data2, fromSource: source, in: &state)
             } else if let clockSource = state.clockSource, isSameName(clockSource, source) {
                 state.tracker.receive(event, at: seconds)
                 state.reading = state.tracker.reading
@@ -218,6 +360,124 @@ private final class MIDIRouting: Sendable {
                 pr_engine_set_transport(engine, state.tempo, state.reading.isPlaying)
             }
         }
+    }
+
+    /// Only under the lock.
+    private func route(status: UInt8, data1: UInt8, data2: UInt8, fromSource source: String, in state: inout State) {
+        for target in state.routes where isSameName(target.route.sourceName, source) && target.route.channel.matches(status: status) {
+            pr_engine_push_midi(engine, target.slot, status, data1, data2)
+            state.eventCounts[target.channel, default: 0] &+= 1
+        }
+    }
+
+    /// The passes of the type comment. Their scratch is on the stack, and whatever is let go of, the
+    /// knob a learn replaced or a plugin's retain, goes after the lock.
+    private func handleControlChange(status: UInt8, controller: UInt8, value: UInt8, fromSource source: String) {
+        // A copy of the source's name, which is a retain: the name lives in its tag.
+        var heard: ControlKnob? = ControlKnob(source: source, channel: Int(status & 0x0F) + 1, controller: Int(controller))
+        withUnsafeTemporaryAllocation(of: PendingWrite.self, capacity: maxWritesPerControlChange) { pending in
+            var count = 0
+            var generation: UInt64 = 0
+            state.withLock { state in
+                if state.isLearning { swap(&state.learnedKnob, &heard) }
+                var isMapped = false
+                for index in state.controls.indices where state.controls[index].target.knob.matches(heard: source, status: status, controller: controller) {
+                    isMapped = true
+                    guard count < pending.count, let write = state.controls[index].target.write else { continue }
+                    let entry = PendingWrite(
+                        plugin: .passRetained(write.plugin), unit: write.plugin.audioUnit, index: Int32(index),
+                        parameter: state.controls[index].target.parameter, value: 0
+                    )
+                    (pending.baseAddress! + count).initialize(to: entry)
+                    count += 1
+                }
+                if !isMapped { route(status: status, data1: controller, data2: value, fromSource: source, in: &state) }
+                generation = state.controlsGeneration
+            }
+            guard count > 0 else { return }
+
+            for index in 0..<count {
+                AudioUnitGetParameter(pending[index].unit, pending[index].parameter, kAudioUnitScope_Global, 0, &pending[index].value)
+            }
+
+            state.withLock { state in
+                let isSameTable = state.controlsGeneration == generation
+                for index in 0..<count {
+                    let control = Int(pending[index].index)
+                    pending[index].index = -1
+                    guard isSameTable, let write = state.controls[control].target.write else { continue }
+                    let current = write.range.fraction(of: pending[index].value)
+                    guard state.controls[control].takeover.follow(knob: value, currentFraction: current, from: write.from, to: write.to)
+                    else { continue }
+                    pending[index].value = write.range.value(atFraction: ControlMapping.fraction(forKnob: value, from: write.from, to: write.to))
+                    pending[index].index = Int32(control)
+                    state.controls[control].moved = true
+                }
+            }
+
+            for index in 0..<count {
+                if pending[index].index >= 0 {
+                    var parameter = AudioUnitParameter(
+                        mAudioUnit: pending[index].unit, mParameterID: pending[index].parameter, mScope: kAudioUnitScope_Global, mElement: 0
+                    )
+                    AUParameterSet(parameterListener, nil, &parameter, pending[index].value, 0)
+                }
+                // The last reference can go here; the plugin then hands its disposal to the main thread.
+                pending[index].plugin.release()
+            }
+        }
+    }
+
+    func setControls(_ targets: [ControlTarget]) {
+        var replaced = targets.map { Control(target: $0) }
+        state.withLock { state in
+            // A target that stays keeps its takeover and its move. Only values move here, nothing is made.
+            for index in replaced.indices {
+                guard let old = state.controls.firstIndex(where: { $0.isSame(as: replaced[index].target) }) else { continue }
+                replaced[index].takeover = state.controls[old].takeover
+                replaced[index].moved = state.controls[old].moved
+            }
+            swap(&state.controls, &replaced)
+            state.controlsGeneration &+= 1
+        }
+    }
+
+    func rearmControls(node: UUID, parameter: AudioUnitParameterID?) {
+        state.withLock { state in
+            for index in state.controls.indices where state.controls[index].target.node == node {
+                if let parameter, state.controls[index].target.parameter != parameter { continue }
+                state.controls[index].takeover.rearm()
+            }
+        }
+    }
+
+    func takeMovedNodes() -> Set<UUID> {
+        // Room for every target, so the lock below never grows it. Only the main actor changes the
+        // table, so it cannot grow in between; if it did, the rest would wait for the next call.
+        var nodes: [UUID] = []
+        nodes.reserveCapacity(state.withLock { $0.controls.count })
+        state.withLock { state in
+            for index in state.controls.indices where state.controls[index].moved {
+                guard nodes.count < nodes.capacity else { break }
+                nodes.append(state.controls[index].target.node)
+                state.controls[index].moved = false
+            }
+        }
+        return Set(nodes)
+    }
+
+    func setLearning(_ on: Bool) {
+        var forgotten: ControlKnob?
+        state.withLock { state in
+            state.isLearning = on
+            if !on { swap(&state.learnedKnob, &forgotten) }
+        }
+    }
+
+    func takeLearnedKnob() -> ControlKnob? {
+        var taken: ControlKnob?
+        state.withLock { swap(&$0.learnedKnob, &taken) }
+        return taken
     }
 
     func setRoutes(_ routes: [MIDIRouteTarget]) {
@@ -269,14 +529,21 @@ private final class MIDIRouting: Sendable {
         }
     }
 
-    /// Past this, no event reaches the engine, not even one already on its way.
+    /// Past this, no event reaches the engine, not even one already on its way, and no knob reaches
+    /// a plugin, but for a write already past its last check.
     func close() {
         var replaced: [MIDIRouteTarget] = []
         var counts: [UUID: UInt64] = [:]
+        var controls: [Control] = []
+        var forgotten: ControlKnob?
         state.withLock { state in
             swap(&state.routes, &replaced)
             swap(&state.eventCounts, &counts)
             state.clockSource = nil
+            swap(&state.controls, &controls)
+            state.controlsGeneration &+= 1
+            state.isLearning = false
+            swap(&state.learnedKnob, &forgotten)
         }
     }
 
@@ -300,6 +567,36 @@ private final class MIDIRouting: Sendable {
             let seconds = hostSeconds()
             forEachEvent(in: list) { handle($0, fromSource: source.name, at: seconds) }
         }
+    }
+}
+
+/// One parameter a control change reaches, on the stack between the passes of `handle`. Plain
+/// values only, so the scratch needs no cleanup.
+private struct PendingWrite {
+    /// Retained in the first pass, so a table replaced meanwhile cannot free the plugin.
+    var plugin: Unmanaged<HostedPlugin>
+    var unit: AudioUnit
+    /// The target in the table, and -1 once the second pass decided not to write.
+    var index: Int32
+    var parameter: AudioUnitParameterID
+    /// The parameter's value read in between, then the value to write.
+    var value: AudioUnitParameterValue
+}
+
+/// What one control change puts on the stack. Swift keeps a temporary allocation of up to 1 KiB there
+/// and takes anything larger from the heap, so this must stay within that.
+let controlChangeScratchBytes = MemoryLayout<PendingWrite>.stride * maxWritesPerControlChange
+
+extension ControlKnob {
+    /// By value, without making the knob of the message. The channel and controller come from the
+    /// status byte, so a knob decoded with numbers out of range never matches.
+    fileprivate func matches(heard source: String, status: UInt8, controller: UInt8) -> Bool {
+        self.controller == Int(controller) && channel == Int(status & 0x0F) + 1 && isSameName(self.source, source)
+    }
+
+    /// By bytes, like `matches`, since this runs under the lock.
+    fileprivate func isSame(as other: ControlKnob) -> Bool {
+        controller == other.controller && channel == other.channel && isSameName(source, other.source)
     }
 }
 
