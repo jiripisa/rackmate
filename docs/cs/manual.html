@@ -80,6 +80,15 @@
             <li><a href="#positions">Tabulky pozic</a></li>
           </ol>
         </li>
+        <li><a href="#midi-learn">MIDI learn</a>
+          <ol>
+            <li><a href="#learn">Naučení knoflíku</a></li>
+            <li><a href="#pick-parameter">Pick a parameter</a></li>
+            <li><a href="#range">Rozsah a směr</a></li>
+            <li><a href="#takeover">Převzetí</a></li>
+            <li><a href="#mapping-saved">Ukládání</a></li>
+          </ol>
+        </li>
         <li><a href="#clock">MIDI clock</a></li>
         <li><a href="#keys">Klávesnice</a></li>
         <li><a href="#faults">Poruchy</a></li>
@@ -837,6 +846,106 @@
         <p>Za posledním řádkem nové kanály používají ten poslední. Když zařízení kanály dané pozice
         nemá, nový kanál si vezme první stereo pár, který žádný kanál nepoužívá, a jinak první pár
         zařízení, takže hraje hned a nezůstane potichu.</p>
+      </section>
+
+      <section id="midi-learn">
+        <h2>MIDI learn</h2>
+        <p>MIDI learn přiřadí knoflík MIDI kontroleru k parametru pluginu, takže filtr nebo mix
+        reverbu můžete hrát rukou. Funguje u každého pluginu v racku: u nástroje, efektu v řetězci
+        i samostatného efektu. Kontroler je zdroj stejně jako ten, který posílá vaše noty, a Rackmate
+        poslouchá všechny zdroje na všech MIDI kanálech, ať už je
+        <a href="#midi-in"><span class="ui caps">MIDI in</span></a> kanálu nastavený jakkoli.</p>
+        <p>Přiřazení pluginu jsou v pásu <span class="ui caps">MIDI control</span> pod jeho vlastním
+        vzhledem v <a href="#open-plugin">okně pluginu</a>. Okno je alespoň tak široké jako pás a
+        s přibývajícími řádky roste dolů.</p>
+        <figure class="fig medium">
+          <img src="../assets/manual/midi-control.png" alt="Okno AUDelay od Applu s pásem MIDI CONTROL pod vzhledem pluginu: rozsvícená klávesa LEARN, nápověda, menu Pick a parameter a řádek pro Dry/Wet Mix s knoflíkem a rozsahem 0 % až 100 %.">
+          <figcaption>AUDelay s pásem MIDI CONTROL, Learn zapnutý.</figcaption>
+        </figure>
+
+        <h3 id="learn">Naučení knoflíku</h3>
+        <ol>
+          <li>V okně pluginu stiskněte <span class="ui caps">Learn</span>. Klávesa se rozsvítí
+          oranžově a objeví se nápověda.</li>
+          <li>Myší pohněte ovládacím prvkem, který chcete, ve vlastním vzhledu pluginu. Objeví se
+          řádek s názvem parametru a textem <span class="ui">waiting for a knob…</span>. Pohnete-li
+          před knoflíkem jiným prvkem, parametr se nahradí.</li>
+          <li>Pohněte knoflíkem na kontroleru. Řádek ukáže knoflík jako zařízení, MIDI kanál a číslo
+          controlleru, třeba <span class="ui">OXI E16 · CH 1 · CC 74</span>, a od té chvíle
+          funguje.</li>
+        </ol>
+        <p>Learn zůstane zapnutý, takže můžete rovnou pokračovat dalším prvkem. Počítají se jen
+        pohyby po zapnutí Learn a vezme se jen knoflík, kterým pohnete, když řádek čeká: kontroler
+        nebo sekvencer, který posílá control change, nic nevytvoří sám. Dalším stiskem
+        <span class="ui caps">Learn</span> ho vypnete; zavření okna udělá totéž. Naučíte-li knoflík,
+        který už stejný parametr ovládá, druhý řádek nevznikne a starý si nechá rozsah.</p>
+        <p>Přiřazení lze vytvořit jen při otevřeném okně pluginu. Po zavření okna dál funguje.</p>
+
+        <h3 id="pick-parameter">Pick a parameter</h3>
+        <p>Některé pluginy aplikaci neřeknou, kterým prvkem myš pohnula, takže ho Learn nezachytí.
+        Při zapnutém Learn nabízí menu <span class="ui">Pick a parameter</span> vpravo v pásu
+        parametry pluginu podle názvu. Vyberte jeden a jeho řádek čeká na knoflík stejně jako
+        jindy. Plugin, který žádné parametry nevypisuje, menu nemá.</p>
+
+        <h3 id="range">Rozsah a směr</h3>
+        <p>Každý řádek má dvě pole <span class="ui">n % → n %</span>: hodnotu parametru, když je
+        knoflík na minimu, a když je na maximu, v celých procentech od 0 do 100 rozsahu parametru.
+        Nový řádek má <span class="ui">0 % → 100 %</span>. Procenta sledují vlastní stupnici
+        parametru, jak ji plugin udává, takže knoflík cutoffu se hýbe jako vlastní ovládání cutoffu
+        v pluginu, ne lineárně v Hz. Parametr s kroky, třeba přepínač nebo menu, vezme nejbližší
+        krok.</p>
+        <p>Napište hodnotu a stiskněte <kbd>Return</kbd>, nebo klikněte jinam. Cokoli jiného než celé
+        číslo od 0 do 100 vrátí původní hodnotu. Je-li první hodnota větší než druhá, směr se otočí:
+        <span class="ui">100 % → 0 %</span> filtr přivírá, zatímco knoflík ho otevírá. Jedním
+        pohybem tak jde filtr otevřít a reverb zavřít.</p>
+
+        <h3 id="remove-mapping">Smazání řádku</h3>
+        <p>Tlačítko <span class="ui">×</span> na konci řádku přiřazení smaže. Knoflík pak k pluginu
+        zase dojde jako obyčejný control change.</p>
+
+        <h3 id="takeover">Převzetí</h3>
+        <p>Parametr nikdy neskočí, když se knoflíku dotknete. Jakmile přiřazení začne čekat,
+        parametr zůstane, kde je, dokud knoflík nepřejde jeho aktuální hodnotu; od té chvíle ho
+        následuje. Přiřazení čeká:</p>
+        <ul>
+          <li>po otevření racku,</li>
+          <li>po výběru presetu a</li>
+          <li>poté, co parametrem v okně pluginu pohnete myší.</li>
+        </ul>
+        <p>Pohyby, které dělá sám knoflík, ho čekat nenutí. Leží-li aktuální hodnota mimo rozsah,
+        přiřazení převezme na bližším konci rozsahu. Jsou-li oba konce stejné, parametr se drží
+        na té hodnotě a přiřazení převezme při prvním pohybu knoflíku.</p>
+
+        <h3 id="several">Jeden knoflík, víc parametrů</h3>
+        <p>Jeden knoflík může ovládat kolik parametrů chcete, v jednom pluginu i ve více: naučíte ho
+        pro každý zvlášť. Každý řádek má vlastní rozsah a směr.</p>
+
+        <h3 id="mapped-cc">Přiřazené knoflíky a nástroje</h3>
+        <p>Control change, který odpovídá přiřazení v racku zařízením, MIDI kanálem a číslem
+        controlleru, už k žádnému nástroji nedojde. Jinak by knoflík dělal dvě věci: přiřazenou a tu,
+        kterou má nástroj sám. Platí to i tehdy, když přiřazení čeká na převzetí, nebo když se jeho
+        plugin nenačetl či přišel o parametr. Všechny ostatní zprávy jdou nástrojům jako dřív.</p>
+
+        <h3 id="mapping-saved">Ukládání</h3>
+        <p>Přiřazení se ukládají s rackem a fungují hned po jeho otevření. K presetu nepatří:
+        výběr presetu je nechá a uložení presetu je neuloží. Naučení, smazání i změna rozsahu označí
+        rack jako neuložený. Stejně tak pohyb knoflíku, a zvuk pluginu se pak ukáže jako vlastní,
+        stejně jako když pohnete prvkem myší: polohy knoflíků, které jste zahráli, se při uložení
+        uloží s rackem. Platí to i při zavřeném okně pluginu. Soubory racků ze starších verzí se
+        otevřou beze změny.</p>
+        <p>Odebráním pluginu z racku zmizí jeho přiřazení, přesunutí efektu je zachová a výměna
+        pluginu za jiný je zahodí.</p>
+
+        <h3 id="dimmed-rows">Ztlumené řádky</h3>
+        <p>Ztlumený řádek zatím nic nedělá a zůstává v seznamu. Jde dál upravit i smazat. Rack se
+        otevře i bez kontroleru nebo parametru pluginu.</p>
+        <dl class="controls">
+          <dt>Zařízení chybí</dt>
+          <dd>Kontroler není připojený. Řádek znovu funguje, jakmile se připojí.</dd>
+          <dt>Parametr zmizel</dt>
+          <dd>Plugin už parametr s tímto číslem nemá, třeba po aktualizaci pluginu. Řádek smažte,
+          nebo knoflík naučte znovu.</dd>
+        </dl>
       </section>
 
       <section id="clock">

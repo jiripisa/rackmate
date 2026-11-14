@@ -79,6 +79,15 @@
             <li><a href="#positions">Position tables</a></li>
           </ol>
         </li>
+        <li><a href="#midi-learn">MIDI learn</a>
+          <ol>
+            <li><a href="#learn">Learning a knob</a></li>
+            <li><a href="#pick-parameter">Pick a parameter</a></li>
+            <li><a href="#range">Range and direction</a></li>
+            <li><a href="#takeover">Takeover</a></li>
+            <li><a href="#mapping-saved">Saving</a></li>
+          </ol>
+        </li>
         <li><a href="#clock">MIDI clock</a></li>
         <li><a href="#keys">Keyboard</a></li>
         <li><a href="#faults">Faults</a></li>
@@ -845,6 +854,109 @@
         <p>Beyond the last row, new channels reuse it. If the device does not have a position's
         channels, the new channel takes the first stereo pair no channel uses, or else the first
         pair of the device, so it plays at once instead of staying silent.</p>
+      </section>
+
+      <section id="midi-learn">
+        <h2>MIDI learn</h2>
+        <p>MIDI learn maps a knob of a MIDI controller to a parameter of a plugin, so you can play
+        a filter or a reverb mix by hand. It works for every plugin of the rack: an instrument, an
+        effect in a chain and a standalone effect. The controller is a source like the one that
+        sends your notes, and Rackmate listens to all sources on all MIDI channels, whatever
+        <a href="#midi-in"><span class="ui caps">MIDI in</span></a> of a channel says.</p>
+        <p>The mappings of a plugin are in the <span class="ui caps">MIDI control</span> strip under
+        its own view in the <a href="#open-plugin">plugin window</a>. The window is at least as
+        wide as the strip and grows downwards with the rows.</p>
+        <figure class="fig medium">
+          <img src="assets/manual/midi-control.png" alt="The window of Apple's AUDelay with the MIDI CONTROL strip under the plugin's view: the LEARN key lit, the hint, the Pick a parameter menu, and a row for Dry/Wet Mix with its knob and a range of 0 % to 100 %.">
+          <figcaption>AUDelay with the MIDI CONTROL strip, Learn on.</figcaption>
+        </figure>
+
+        <h3 id="learn">Learning a knob</h3>
+        <ol>
+          <li>In the plugin window, press <span class="ui caps">Learn</span>. The key lights amber
+          and a hint appears.</li>
+          <li>Move the control you want in the plugin's own view, with the mouse. A row appears
+          with the parameter's name and <span class="ui">waiting for a knob…</span>. Moving another
+          control before a knob arrives replaces the parameter.</li>
+          <li>Move a knob on your controller. The row shows the knob as the device, the MIDI
+          channel and the controller number, such as <span class="ui">OXI E16 · CH 1 · CC 74</span>,
+          and works from that moment.</li>
+        </ol>
+        <p>Learn stays on, so you can go on with the next control. Only moves made after Learn was
+        switched on count, and only the knob you move while a row is waiting is taken: a controller
+        or a sequencer that sends control changes creates nothing by itself. Press
+        <span class="ui caps">Learn</span> again to switch it off; closing the window does the
+        same. Learning a knob that already drives the same parameter adds no second row and keeps
+        the range of the old one.</p>
+        <p>A mapping can be made only while the plugin's window is open. It keeps working after the
+        window is closed.</p>
+
+        <h3 id="pick-parameter">Pick a parameter</h3>
+        <p>Some plugins do not tell the app which control the mouse moved, so Learn cannot see it.
+        While Learn is on, the <span class="ui">Pick a parameter</span> menu at the right of the
+        strip lists the parameters of the plugin by name. Choose one, and its row waits for a knob
+        in the same way. The menu is not there for a plugin that lists no parameters.</p>
+
+        <h3 id="range">Range and direction</h3>
+        <p>Each row has two fields, <span class="ui">n % → n %</span>: the value of the parameter
+        when the knob is at its minimum and at its maximum, as whole percentages from 0 to 100 of
+        the parameter's range. A new row is <span class="ui">0 % → 100 %</span>. The percentages
+        follow the parameter's own scale as the plugin declares it, so a cutoff knob moves like the
+        plugin's own cutoff control and not linearly in Hz. A parameter with steps, such as a
+        switch or a menu, takes the nearest step.</p>
+        <p>Type a value and press <kbd>Return</kbd>, or click elsewhere. Anything but a whole number
+        from 0 to 100 puts the old value back. When the first value is above the second, the
+        direction turns round: <span class="ui">100 % → 0 %</span> closes a filter while the knob
+        opens it. This way one knob can open a filter and close a reverb at once.</p>
+
+        <h3 id="remove-mapping">Delete a row</h3>
+        <p>The <span class="ui">×</span> at the end of a row deletes the mapping. The knob then
+        reaches the plugin as an ordinary control change again.</p>
+
+        <h3 id="takeover">Takeover</h3>
+        <p>A parameter never jumps when you touch a knob. After a mapping starts to wait, the
+        parameter stays where it is until the knob passes its current value; from then on it
+        follows the knob. A mapping waits:</p>
+        <ul>
+          <li>after you open a rack,</li>
+          <li>after you pick a preset, and</li>
+          <li>after you move the parameter with the mouse in the plugin window.</li>
+        </ul>
+        <p>Moves the knob itself makes do not make it wait. When the current value is outside the
+        range, the mapping takes over at the nearer end of the range. When both ends are equal, the
+        parameter is held at that value and the mapping takes over at the first move of the knob.</p>
+
+        <h3 id="several">One knob, several parameters</h3>
+        <p>A knob can drive as many parameters as you like, in one plugin or in several: learn it
+        once for each. Every row has its own range and direction.</p>
+
+        <h3 id="mapped-cc">Mapped knobs and instruments</h3>
+        <p>A control change that matches a mapping of the rack, by device, MIDI channel and
+        controller number, no longer reaches any instrument. Otherwise the knob would do two things:
+        the mapped one and the instrument's own. This holds while the mapping waits for takeover and
+        when its plugin has not loaded or has lost the parameter. Every other message goes to the
+        instruments as before.</p>
+
+        <h3 id="mapping-saved">Saving</h3>
+        <p>The mappings are saved with the rack and work as soon as it opens. They do not belong to
+        a preset: picking a preset keeps them, and saving a preset does not store them. Learning,
+        deleting and changing a range mark the rack unsaved. So does a move of a knob, and the
+        plugin's sound then reads as custom, as when you move a control with the mouse: the knob
+        positions you played are saved with the rack when you save. This holds with the plugin
+        window closed, too. Rack files from earlier versions open unchanged.</p>
+        <p>Removing a plugin from the rack removes its mappings, moving an effect keeps them, and
+        replacing a plugin with another drops them.</p>
+
+        <h3 id="dimmed-rows">Dimmed rows</h3>
+        <p>A dimmed row does nothing for now, and stays in the list. It can still be edited and
+        deleted. A rack still opens without the controller or the plugin parameter.</p>
+        <dl class="controls">
+          <dt>The device is missing</dt>
+          <dd>The controller is not connected. The row works again when it is.</dd>
+          <dt>The parameter is gone</dt>
+          <dd>The plugin has no parameter with that number, as after an update of the plugin. Delete
+          the row, or learn the knob again.</dd>
+        </dl>
       </section>
 
       <section id="clock">
