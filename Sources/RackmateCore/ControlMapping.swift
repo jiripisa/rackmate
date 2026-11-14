@@ -50,6 +50,13 @@ public struct ControlMapping: Codable, Equatable, Sendable {
         set { to = Self.fraction(newValue) }
     }
 
+    /// The fraction of the parameter's range a knob value 0...127 lands on.
+    public func fraction(forKnob value: UInt8) -> Double {
+        // Written as a blend so that 0 and 127 give `from` and `to` exactly.
+        let position = Double(value) / 127
+        return from * (1 - position) + to * position
+    }
+
     private static func percent(_ value: Double) -> Int { Int((value * 100).rounded()) }
     private static func fraction(_ percent: Int) -> Double { Double(min(max(percent, 0), 100)) / 100 }
 }
