@@ -749,7 +749,8 @@ final class AppModel {
             moved = true
             if !slot.isCustomSound { edit { $0.updateSlot(at: location) { $0.isCustomSound = true } } }
         }
-        if moved { session?.markChanged() }
+        // Writing `session` redraws the mixer, even when it is dirty already, so only the first move does.
+        if moved, session?.isDirty == false { session?.markChanged() }
     }
 
     private func learn(_ learned: (location: PluginLocation, mapping: ControlMapping)) {
