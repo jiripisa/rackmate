@@ -15,3 +15,6 @@ __pycache__/
 # Superpowers brainstorm/plan scratch
 .superpowers/
 _images/
+
+# Local notes on moving the signing setup to another Mac
+signing_setup.md
