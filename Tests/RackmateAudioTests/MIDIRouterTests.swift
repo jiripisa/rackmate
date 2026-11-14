@@ -767,12 +767,15 @@ struct MIDIRouterTests {
         }
     }
 
-    @Test func aParameterMovedElsewhereMakesTheKnobWaitAgain() async throws {
+    /// With `readsBack`, as for a v2 unit, the knob also keeps what Mix read back after each write, and a
+    /// move from outside is far from both.
+    @Test(arguments: [false, true])
+    func aParameterMovedElsewhereMakesTheKnobWaitAgain(readsBack: Bool) async throws {
         let plugin = try await testControls()
         let mix = try parameter("Mix", of: plugin)
         try await withRouter([]) { router, _ in
             let node = UUID()
-            router.setControls([control(knob74, node: node, mix, of: plugin)])
+            router.setControls([control(knob74, node: node, mix, of: plugin, readsBack: readsBack)])
             router.handle(controlChange(74, 64), fromSource: "A", at: 0)
             router.handle(controlChange(74, 70), fromSource: "A", at: 0)
             #expect(abs(value(of: mix, in: plugin) - mixAt(70)) < tolerance)
