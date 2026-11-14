@@ -37,6 +37,17 @@ public struct ControlLearning: Sendable {
         pendings[location] = Pending(parameter: parameter, name: name, order: touches)
     }
 
+    /// A touch, with `knob`, the knob heard since the last `receive`. That knob moved before the touch,
+    /// so it goes where `receive` would have given it a moment earlier, and is dropped if nothing was
+    /// pending then. It never completes the parameter touched now.
+    public mutating func touch(
+        at location: PluginLocation, parameter: UInt32, name: String, after knob: ControlKnob?
+    ) -> (location: PluginLocation, mapping: ControlMapping)? {
+        let earlier = knob.flatMap { receive($0) }
+        touch(at: location, parameter: parameter, name: name)
+        return earlier
+    }
+
     public func pending(at location: PluginLocation) -> (parameter: UInt32, name: String)? {
         pendings[location].map { ($0.parameter, $0.name) }
     }

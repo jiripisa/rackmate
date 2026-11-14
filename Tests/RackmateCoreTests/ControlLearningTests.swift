@@ -38,6 +38,34 @@ struct ControlLearningTests {
         #expect(learning.receive(.fixture())?.mapping.parameter == 4)
     }
 
+    @Test func aKnobHeardBeforeATouchDoesNotCompleteIt() {
+        var learning = ControlLearning()
+        learning.start(at: a)
+        learning.touch(at: a, parameter: 3, name: "Cutoff")
+        let earlier = learning.touch(at: a, parameter: 4, name: "Resonance", after: .fixture())
+        #expect(earlier?.location == a)
+        #expect(earlier?.mapping.parameter == 3)
+        #expect(learning.pending(at: a)?.parameter == 4)
+    }
+
+    @Test func aKnobHeardBeforeTheFirstTouchIsDropped() {
+        var learning = ControlLearning()
+        learning.start(at: a)
+        #expect(learning.touch(at: a, parameter: 3, name: "Cutoff", after: .fixture()) == nil)
+        #expect(learning.pending(at: a)?.parameter == 3)
+    }
+
+    @Test func aKnobHeardBeforeATouchGoesToTheNewestPendingWindow() {
+        var learning = ControlLearning()
+        learning.start(at: a)
+        learning.start(at: b)
+        learning.touch(at: b, parameter: 2, name: "Two")
+        let earlier = learning.touch(at: a, parameter: 1, name: "One", after: .fixture())
+        #expect(earlier?.location == b)
+        #expect(learning.pending(at: a)?.parameter == 1)
+        #expect(learning.pending(at: b) == nil)
+    }
+
     @Test func theNewestPendingWindowTakesTheKnob() {
         var learning = ControlLearning()
         learning.start(at: a)

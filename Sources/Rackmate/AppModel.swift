@@ -688,10 +688,12 @@ final class AppModel {
     }
 
     /// The plugin reported a touched parameter. The knobs it already has wait for a pass over their
-    /// position again, so touching does not make them jump.
+    /// position again, so touching does not make them jump. A knob the router heard before the touch,
+    /// and the poll has not taken yet, is not learned for it.
     func noteParameterTouched(at location: PluginLocation, parameter: UInt32) {
         guard let found = hostedPlugin(at: location)?.parameter(parameter) else { return }
-        learning.touch(at: location, parameter: parameter, name: found.name)
+        let knob = audio?.router.takeLearnedKnob()
+        if let earlier = learning.touch(at: location, parameter: parameter, name: found.name, after: knob) { learn(earlier) }
         audio?.router.rearmControls(node: location.effect ?? location.channel, parameter: parameter)
     }
 
@@ -736,12 +738,8 @@ final class AppModel {
     }
 
     private func pollMIDI() {
-        guard let router = audio?.router, let configuration = session?.configuration else { return }
-        if let knob = router.takeLearnedKnob(), let (location, mapping) = learning.receive(knob),
-            configuration.slot(at: location) != nil
-        {
-            edit { $0.updateSlot(at: location) { $0.learn(mapping) } }
-        }
+        guard let router = audio?.router, session != nil else { return }
+        if let knob = router.takeLearnedKnob(), let learned = learning.receive(knob) { learn(learned) }
         var moved = false
         for node in router.takeMovedNodes() {
             guard let current = session?.configuration else { break }
@@ -752,6 +750,11 @@ final class AppModel {
             if !slot.isCustomSound { edit { $0.updateSlot(at: location) { $0.isCustomSound = true } } }
         }
         if moved { session?.markChanged() }
+    }
+
+    private func learn(_ learned: (location: PluginLocation, mapping: ControlMapping)) {
+        guard session?.configuration.slot(at: learned.location) != nil else { return }
+        edit { $0.updateSlot(at: learned.location) { $0.learn(learned.mapping) } }
     }
 
     // MARK: - Settings
