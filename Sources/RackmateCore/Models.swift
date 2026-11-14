@@ -131,10 +131,13 @@ public struct PluginSlot: Codable, Equatable, Sendable {
     /// The Follow Start/Stop switch. Nil is the default, which depends on where the plugin sits:
     /// read `Channel.followsTransport` or `InsertEffect.followsTransport`.
     public var followsTransport: Bool?
+    /// The MIDI knobs that drive this plugin's parameters. They belong to the slot, so they stay when
+    /// the effect moves or a preset is picked, and go when the plugin is replaced.
+    public var controls: [ControlMapping]
 
     public init(
         plugin: PluginID, displayName: String, presetName: String? = nil, state: Data? = nil, isCustomSound: Bool = false,
-        followsTransport: Bool? = nil
+        followsTransport: Bool? = nil, controls: [ControlMapping] = []
     ) {
         self.plugin = plugin
         self.displayName = displayName
@@ -142,13 +145,14 @@ public struct PluginSlot: Codable, Equatable, Sendable {
         self.state = state
         self.isCustomSound = isCustomSound
         self.followsTransport = followsTransport
+        self.controls = controls
     }
 
     private enum CodingKeys: String, CodingKey {
-        case plugin, displayName, presetName, state, isCustomSound, followsTransport
+        case plugin, displayName, presetName, state, isCustomSound, followsTransport, controls
     }
 
-    /// A file from before `isCustomSound` or `followsTransport` has no such key.
+    /// A file from before `isCustomSound`, `followsTransport` or `controls` has no such key.
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         plugin = try values.decode(PluginID.self, forKey: .plugin)
@@ -157,6 +161,7 @@ public struct PluginSlot: Codable, Equatable, Sendable {
         state = try values.decodeIfPresent(Data.self, forKey: .state)
         isCustomSound = try values.decodeIfPresent(Bool.self, forKey: .isCustomSound) ?? false
         followsTransport = try values.decodeIfPresent(Bool.self, forKey: .followsTransport)
+        controls = try values.decodeIfPresent([ControlMapping].self, forKey: .controls) ?? []
     }
 }
 

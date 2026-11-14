@@ -46,3 +46,9 @@ import Testing
     session.markSaved()
     #expect(!session.isDirty && session.leaveAction == .proceed)
 }
+
+@Test func markChangedMakesASavedSessionDirty() {
+    var session = EditingSession(saved: .fixture())
+    session.markChanged()
+    #expect(session.isDirty && session.leaveAction == .askToSave)
+}

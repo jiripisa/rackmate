@@ -40,6 +40,11 @@ public struct EditingSession: Sendable {
         }
     }
 
+    /// Marks the session changed with no edit: a mapped MIDI move changed plugin state that the configuration does not hold.
+    public mutating func markChanged() {
+        isDirty = true
+    }
+
     public mutating func markSaved() {
         isSaved = true
         isDirty = false

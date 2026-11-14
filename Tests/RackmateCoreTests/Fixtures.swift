@@ -45,3 +45,9 @@ func tempDir() throws -> URL {
     try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
     return url
 }
+
+extension ControlKnob {
+    static func fixture() -> ControlKnob {
+        ControlKnob(source: "Faderfox", channel: 1, controller: 74)
+    }
+}

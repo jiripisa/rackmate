@@ -91,6 +91,49 @@ struct ModelsTests {
         #expect(again.isOn == isOn)
         #expect(again == effect)
     }
+
+    @Test func aSlotFromBeforeMIDILearnHasNoControls() throws {
+        let json = #"{"plugin":{"type":"aufx","subtype":"test","manufacturer":"Test"},"displayName":"Old","state":"AQ=="}"#
+        #expect(try JSONDecoder().decode(PluginSlot.self, from: Data(json.utf8)).controls.isEmpty)
+    }
+
+    @Test func controlsSurviveTheFile() throws {
+        var slot = PluginSlot.fixture()
+        slot.learn(ControlMapping(knob: .fixture(), parameter: 3, parameterName: "Cutoff", from: 0.6, to: 0.1))
+        #expect(try JSONDecoder().decode(PluginSlot.self, from: JSONEncoder().encode(slot)) == slot)
+    }
+
+    @Test func movingAnEffectKeepsItsControls() {
+        var effect = InsertEffect.fixture()
+        effect.slot.learn(ControlMapping(knob: .fixture(), parameter: 3, parameterName: "Cutoff"))
+        let other = InsertEffect.fixture()
+        var config = Configuration.fixture(channels: [
+            Channel.fixture(effectRows: [[effect], [other]]), Channel.fixture(effectRows: [[InsertEffect.fixture()]]),
+        ])
+        let sameChannel = config.moveEffect(effect.id, to: .below(other.id))
+        #expect(sameChannel)
+        #expect(config.channels[0].effects[0].first { $0.id == effect.id }?.slot.controls == effect.slot.controls)
+        let target = config.channels[1].effects[0][0]
+        let otherChannel = config.moveEffect(effect.id, to: .after(target.id))
+        #expect(otherChannel)
+        #expect(config.channels[1].effects.flatMap { $0 }.first { $0.id == effect.id }?.slot.controls == effect.slot.controls)
+    }
+
+    @Test func replacingAPluginDropsItsControls() {
+        var channel = Channel.fixture()
+        channel.slot.learn(ControlMapping(knob: .fixture(), parameter: 3, parameterName: "Cutoff"))
+        let other = PluginInfo(
+            id: PluginID(type: "aumu", subtype: "Other", manufacturer: "Test"), name: "Other", vendor: "", kind: .instrument)
+        #expect(AddPicker.replacing(channel, with: other, preset: .defaultSound, capabilities: nil).slot.controls.isEmpty)
+    }
+
+    @Test func pickingAPresetKeepsItsControls() {
+        var slot = PluginSlot.fixture()
+        slot.learn(ControlMapping(knob: .fixture(), parameter: 3, parameterName: "Cutoff"))
+        let before = slot.controls
+        slot.takePreset("Lead", state: Data([1]))
+        #expect(slot.controls == before)
+    }
 }
 
 @Suite("Plugin makers")
