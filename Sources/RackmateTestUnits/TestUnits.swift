@@ -375,7 +375,7 @@ private final class TestMono: TestUnit {
     }
 }
 
-/// aufx/PlCt/Plug: three parameters to read and write, and silent output. Tests only, so not a safe unit.
+/// aufx/PlCt/Plug: four parameters to read and write, and silent output. Tests only, so not a safe unit.
 private final class TestControls: TestUnit {
     override class var inputBusNames: [String] { ["Input"] }
 
@@ -394,15 +394,25 @@ private final class TestControls: TestUnit {
             withIdentifier: "mode", name: "Mode", address: 2, min: 0, max: 2, unit: .indexed, unitName: nil,
             flags: [.flag_IsReadable, .flag_IsWritable], valueStrings: ["Off", "Soft", "Hard"], dependentParameters: nil
         )
+        // Declared continuous, but reads back on one of four steps, as a JUCE AudioParameterInt does.
+        let steps = AUParameterTree.createParameter(
+            withIdentifier: "steps", name: "Steps", address: 3, min: 0, max: 1, unit: .generic, unitName: nil,
+            flags: [.flag_IsReadable, .flag_IsWritable], valueStrings: nil, dependentParameters: nil
+        )
         cutoff.value = 1_000
         mix.value = 0.5
         mode.value = 0
-        tree = AUParameterTree.createTree(withChildren: [cutoff, mix, mode])
+        steps.value = 0
+        tree = AUParameterTree.createTree(withChildren: [cutoff, mix, mode, steps])
         // The values live here, as they do in a real unit's kernel. Without a provider, an initialized
         // unit reads a value set through the v2 API back as 0.
-        let values = Mutex(Dictionary(uniqueKeysWithValues: [cutoff, mix, mode].map { ($0.address, $0.value) }))
+        let values = Mutex(Dictionary(uniqueKeysWithValues: [cutoff, mix, mode, steps].map { ($0.address, $0.value) }))
         tree.implementorValueObserver = { parameter, value in values.withLock { $0[parameter.address] = value } }
-        tree.implementorValueProvider = { parameter in values.withLock { $0[parameter.address] ?? 0 } }
+        let stepsAddress = steps.address
+        tree.implementorValueProvider = { parameter in
+            let value = values.withLock { $0[parameter.address] ?? 0 }
+            return parameter.address == stepsAddress ? (value * 3).rounded() / 3 : value
+        }
         try super.init(componentDescription: componentDescription, options: options)
     }
 

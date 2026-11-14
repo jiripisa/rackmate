@@ -218,7 +218,7 @@ struct HostingTests {
         registerTestUnits()
         let plugin = try await HostedPlugin.load(PluginID(type: "aufx", subtype: "PlCt", manufacturer: "Plug"))
         let parameters = plugin.parameters()
-        #expect(parameters.map(\.name) == ["Cutoff", "Mix", "Mode"])
+        #expect(parameters.map(\.name) == ["Cutoff", "Mix", "Mode", "Steps"])
         #expect(parameters[0].range == ParameterRange(minimum: 20, maximum: 20_000, scale: .logarithmic, isStepped: false))
         #expect(parameters[1].range == ParameterRange(minimum: 0, maximum: 1, scale: .linear, isStepped: false))
         #expect(parameters[2].range.isStepped)
@@ -258,6 +258,6 @@ struct HostingTests {
         #expect(first == second)
         // The v2 bridge derives these from the parameter identifiers, not the addresses. Pinned, so a run in a
         // new process shows they survive a restart (a mapping in a rack file depends on it).
-        #expect(first == [4_149_505_964, 193_499_283, 2_090_515_018])
+        #expect(first == [4_149_505_964, 193_499_283, 2_090_515_018, 274_815_636])
     }
 }

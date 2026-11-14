@@ -784,6 +784,27 @@ struct MIDIRouterTests {
         }
     }
 
+    @Test func aQuantizedParameterKeepsFollowingATurningKnob() async throws {
+        let plugin = try await testControls()
+        let steps = try parameter("Steps", of: plugin)
+        try await withRouter([]) { router, _ in
+            router.setControls([control(knob74, node: UUID(), steps, of: plugin)])
+            // Steps starts at 0, so 0 takes over; it reads back on 0, 1/3, 2/3 or 1 whatever the knob wrote.
+            let positions = Array(stride(from: 0, through: 125, by: 5))
+            // A v3 unit holds a read right after a write for about 30 ms, so the knob turns off the main
+            // actor, as on the CoreMIDI thread, and the clock polls of other tests keep running.
+            let read = await withCheckedContinuation { (continuation: CheckedContinuation<[Float], Never>) in
+                DispatchQueue.global(qos: .userInteractive).async {
+                    continuation.resume(returning: positions.map { position in
+                        router.handle(controlChange(74, UInt8(position)), fromSource: "A", at: 0)
+                        return value(of: steps, in: plugin)
+                    })
+                }
+            }
+            #expect(read == positions.map { (Float($0) / 127 * 3).rounded() / 3 })
+        }
+    }
+
     @Test func aNewTableKeepsTheTakeoverOfATargetThatStays() async throws {
         let plugin = try await testControls()
         let mix = try parameter("Mix", of: plugin)

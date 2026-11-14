@@ -19,6 +19,10 @@ private let midiChannels: ClosedRange<UInt8> = 0...15
 /// At most this many parameters follow one control change; a knob mapped to more drops the rest.
 private let maxWritesPerControlChange = 32
 
+/// One step of a knob's travel, as a fraction of a parameter's range: a read-back closer than this to
+/// what the knob left is the knob's own.
+private let knobStep = 1.0 / 127
+
 /// Where the events of one route go, and whose they are.
 public struct MIDIRouteTarget: Equatable, Sendable {
     public var route: MIDIRoute
@@ -281,12 +285,12 @@ final class SourceTag: Sendable {
 ///
 /// The control table is the one thing the CoreMIDI thread changes in place: takeover, moved flags,
 /// last writes and the learned knob are values in it, made on the main actor, so nothing is made
-/// under the lock. Nothing but `State` holds the table, or the first change would copy it. A control change calls
-/// into Audio Units, which take locks of their own, so it never does under this one: it notes its
-/// parameters and retains their plugins under the lock, reads their values outside it, decides under
-/// the lock again, and writes outside it. A table replaced meanwhile writes nothing, but a write that
-/// passed its second check can still land after `setControls` or `close`, on a plugin kept alive by
-/// its own retain.
+/// under the lock. Nothing but `State` holds the table, or the first change would copy it. A control
+/// change calls into Audio Units, which take locks of their own, so it never does under this one: it
+/// notes its parameters and retains their plugins under the lock, reads their values outside it,
+/// decides under the lock again, writes and reads back outside it, and notes what it read under the
+/// lock a third time. A table replaced meanwhile writes nothing, but a write that passed its second
+/// check can still land after `setControls` or `close`, on a plugin kept alive by its own retain.
 private final class MIDIRouting: Sendable {
 
     private struct Control {
@@ -294,14 +298,27 @@ private final class MIDIRouting: Sendable {
         var takeover = Takeover()
         /// Set when the knob wrote, cleared by `takeMovedNodes`.
         var moved = false
-        /// What the knob wrote last, while it follows. A value read back that is further from it than
-        /// one knob step means the parameter changed another way, so the knob waits again. Plugins that
-        /// round what they read back stay within the step.
+        /// What the knob wrote last, while it follows, and what the plugin read back right after.
+        /// A plugin may snap, clamp or round what it is given, so the next read-back is compared
+        /// with both (`movedElsewhere`).
         var lastWritten: Float?
+        var lastRead: Float?
 
         mutating func rearm() {
             takeover.rearm()
             lastWritten = nil
+            lastRead = nil
+        }
+
+        /// The parameter, now at `value`, changed another way since the knob last wrote it: it is more
+        /// than one knob step from what was written and from what was read back after. A plugin whose
+        /// read-back lags a write shows the value written by the next control change.
+        func movedElsewhere(to value: Float, in range: ParameterRange) -> Bool {
+            guard let lastWritten else { return false }
+            let fraction = range.fraction(of: value)
+            if abs(fraction - range.fraction(of: lastWritten)) <= knobStep { return false }
+            if let lastRead, abs(fraction - range.fraction(of: lastRead)) <= knobStep { return false }
+            return true
         }
 
         func isSame(as other: ControlTarget) -> Bool {
@@ -431,7 +448,7 @@ private final class MIDIRouting: Sendable {
                     pending[index].index = -1
                     guard isSameTable, let write = state.controls[control].target.write else { continue }
                     let current = write.range.fraction(of: pending[index].value)
-                    if let last = state.controls[control].lastWritten, abs(current - write.range.fraction(of: last)) > 1.0 / 127 {
+                    if state.controls[control].movedElsewhere(to: pending[index].value, in: write.range) {
                         state.controls[control].rearm()
                     }
                     guard state.controls[control].takeover.follow(knob: value, currentFraction: current, from: write.from, to: write.to)
@@ -440,16 +457,31 @@ private final class MIDIRouting: Sendable {
                     pending[index].index = Int32(control)
                     state.controls[control].moved = true
                     state.controls[control].lastWritten = pending[index].value
+                    state.controls[control].lastRead = nil
+                }
+            }
+
+            var wrote = false
+            for index in 0..<count where pending[index].index >= 0 {
+                var parameter = AudioUnitParameter(
+                    mAudioUnit: pending[index].unit, mParameterID: pending[index].parameter, mScope: kAudioUnitScope_Global, mElement: 0
+                )
+                AUParameterSet(parameterListener, nil, &parameter, pending[index].value, 0)
+                AudioUnitGetParameter(pending[index].unit, pending[index].parameter, kAudioUnitScope_Global, 0, &pending[index].value)
+                wrote = true
+            }
+
+            // A rearm in between leaves no `lastWritten`, so a read noted after it compares with nothing.
+            if wrote {
+                state.withLock { state in
+                    guard state.controlsGeneration == generation else { return }
+                    for index in 0..<count where pending[index].index >= 0 {
+                        state.controls[Int(pending[index].index)].lastRead = pending[index].value
+                    }
                 }
             }
 
             for index in 0..<count {
-                if pending[index].index >= 0 {
-                    var parameter = AudioUnitParameter(
-                        mAudioUnit: pending[index].unit, mParameterID: pending[index].parameter, mScope: kAudioUnitScope_Global, mElement: 0
-                    )
-                    AUParameterSet(parameterListener, nil, &parameter, pending[index].value, 0)
-                }
                 // The last reference can go here; the plugin then hands its disposal to the main thread.
                 pending[index].plugin.release()
             }
@@ -467,6 +499,7 @@ private final class MIDIRouting: Sendable {
                 replaced[index].moved = state.controls[old].moved
                 if replaced[index].target.write?.plugin === state.controls[old].target.write?.plugin {
                     replaced[index].lastWritten = state.controls[old].lastWritten
+                    replaced[index].lastRead = state.controls[old].lastRead
                 }
             }
             swap(&state.controls, &replaced)
@@ -611,7 +644,7 @@ private struct PendingWrite {
     /// The target in the table, and -1 once the second pass decided not to write.
     var index: Int32
     var parameter: AudioUnitParameterID
-    /// The parameter's value read in between, then the value to write.
+    /// The parameter's value read in between, then the value to write, then what was read back after it.
     var value: AudioUnitParameterValue
 }
 
