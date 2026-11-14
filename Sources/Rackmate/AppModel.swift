@@ -63,6 +63,8 @@ final class AppModel {
     }
 
     private(set) var audio: AudioSession?
+    /// The plugin windows with Learn on, and the parameter each waits on.
+    private(set) var learning = ControlLearning()
     /// The save question of a quit is on screen, so a second quit does not ask again.
     private(set) var isAskingToQuit = false
     /// The audio devices the system lists, which Settings looks at again while it shows.
@@ -88,6 +90,8 @@ final class AppModel {
     @ObservationIgnored private lazy var probes = ProbeScheduler<ProbeResult>(delay: .milliseconds(300)) { [weak self] plugin in
         await self?.probe(plugin)
     }
+    /// Looks at the MIDI router while a rack is open, for a learned knob and for mapped knobs that moved.
+    @ObservationIgnored private var midiPoll: Task<Void, Never>?
     @ObservationIgnored private var settingsReturn = Screen.start
     /// Devices seen so far by UID, so one that has gone is still called by its name.
     @ObservationIgnored private var deviceNames: [String: String] = [:]
@@ -116,6 +120,7 @@ final class AppModel {
         session = EditingSession(saved: configuration)
         screen = .mixer
         let audio = audioSession()
+        startMIDIPoll()
         let settings = settings
         Task { await audio.reload(configuration, settings: settings) }
     }
@@ -126,6 +131,7 @@ final class AppModel {
         session = EditingSession(new: configuration)
         screen = .mixer
         let audio = audioSession()
+        startMIDIPoll()
         let settings = settings
         Task { await audio.open(configuration, settings: settings) }
         beginAddChannel()
@@ -284,6 +290,7 @@ final class AppModel {
 
     /// Back to the Start screen with nothing playing. Unsaved changes of a rack that is gone go with it.
     private func closeRack() {
+        stopMIDIPoll()
         closeMenu()
         closeAdd()
         close()
@@ -598,6 +605,7 @@ final class AppModel {
         do {
             // A running plugin keeps its own state whatever its slot says, so it is told directly.
             try plugin.restore(preset.state)
+            audio?.router.rearmControls(node: location.effect ?? location.channel)
             edit { $0.updateSlot(at: location) { $0.takePreset(preset.name, state: preset.state) } }
             pluginWindows.moveBaseline(at: location)
         } catch {
@@ -610,6 +618,7 @@ final class AppModel {
         do {
             try plugin.selectFactoryPreset(name)
             let state = try plugin.fullState()
+            audio?.router.rearmControls(node: location.effect ?? location.channel)
             edit { $0.updateSlot(at: location) { $0.takePreset(name, state: state) } }
             pluginWindows.moveBaseline(at: location)
         } catch {
@@ -662,6 +671,87 @@ final class AppModel {
             guard !Task.isCancelled else { return }
             self?.toast = nil
         }
+    }
+
+    // MARK: - MIDI learn
+
+    /// Learn went on in the window at `location`; the router listens for the next knob while any does.
+    func startLearning(at location: PluginLocation) {
+        learning.start(at: location)
+        audio?.router.setLearning(learning.isAnyOn)
+    }
+
+    /// Learn went off there, or its window closed.
+    func stopLearning(at location: PluginLocation) {
+        learning.stop(at: location)
+        audio?.router.setLearning(learning.isAnyOn)
+    }
+
+    /// The plugin reported a touched parameter. The knobs it already has wait for a pass over their
+    /// position again, so touching does not make them jump.
+    func noteParameterTouched(at location: PluginLocation, parameter: UInt32) {
+        guard let found = hostedPlugin(at: location)?.parameter(parameter) else { return }
+        learning.touch(at: location, parameter: parameter, name: found.name)
+        audio?.router.rearmControls(node: location.effect ?? location.channel, parameter: parameter)
+    }
+
+    /// The fallback menu of a plugin that reports no touches.
+    func pickParameter(at location: PluginLocation, parameter: UInt32) {
+        noteParameterTouched(at: location, parameter: parameter)
+    }
+
+    func removeControl(at location: PluginLocation, index: Int) {
+        guard let controls = session?.configuration.slot(at: location)?.controls, controls.indices.contains(index) else { return }
+        edit { $0.updateSlot(at: location) { $0.controls.remove(at: index) } }
+    }
+
+    func setControlRange(at location: PluginLocation, index: Int, fromPercent: Int, toPercent: Int) {
+        guard let controls = session?.configuration.slot(at: location)?.controls, controls.indices.contains(index) else { return }
+        edit {
+            $0.updateSlot(at: location) {
+                $0.controls[index].fromPercent = fromPercent
+                $0.controls[index].toPercent = toPercent
+            }
+        }
+    }
+
+    private func startMIDIPoll() {
+        // Another rack may have been open, with windows that had Learn on.
+        stopMIDIPoll()
+        midiPoll = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(250))
+                guard !Task.isCancelled else { return }
+                self?.pollMIDI()
+            }
+        }
+    }
+
+    /// A rack that closes has no Learn and nothing to look at.
+    private func stopMIDIPoll() {
+        midiPoll?.cancel()
+        midiPoll = nil
+        learning = ControlLearning()
+        audio?.router.setLearning(false)
+    }
+
+    private func pollMIDI() {
+        guard let router = audio?.router, let configuration = session?.configuration else { return }
+        if let knob = router.takeLearnedKnob(), let (location, mapping) = learning.receive(knob),
+            configuration.slot(at: location) != nil
+        {
+            edit { $0.updateSlot(at: location) { $0.learn(mapping) } }
+        }
+        var moved = false
+        for node in router.takeMovedNodes() {
+            guard let current = session?.configuration else { break }
+            let location =
+                current.channels.contains { $0.id == node } ? PluginLocation(channel: node) : current.location(of: node)
+            guard let location, let slot = current.slot(at: location) else { continue }
+            moved = true
+            if !slot.isCustomSound { edit { $0.updateSlot(at: location) { $0.isCustomSound = true } } }
+        }
+        if moved { session?.markChanged() }
     }
 
     // MARK: - Settings
@@ -720,6 +810,7 @@ final class AppModel {
 
     /// For quitting: everything audio goes, in the order `AudioSession.close` keeps.
     func close() {
+        stopMIDIPoll()
         // A plugin's view can call the host at any time, and those calls end up in the render core.
         pluginWindows.closeAll()
         audio?.close()
