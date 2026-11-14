@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.0 — 2026-11-15
 
 - MIDI learn: map knobs of a MIDI controller to plugin parameters, with range, direction and soft takeover, in a new MIDI CONTROL strip under each plugin window. A row that waits for takeover says which way to turn the knob. While Learn is on, control changes reach no instrument.
 
