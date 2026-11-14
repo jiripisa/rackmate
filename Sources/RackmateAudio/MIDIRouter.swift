@@ -55,6 +55,19 @@ public struct ControlTarget: Sendable {
     }
 }
 
+/// A knob's target by its node, parameter and knob, as `takeoverHints` names it.
+public struct ControlKey: Hashable, Sendable {
+    public var node: UUID
+    public var parameter: AudioUnitParameterID
+    public var knob: ControlKnob
+
+    public init(node: UUID, parameter: AudioUnitParameterID, knob: ControlKnob) {
+        self.node = node
+        self.parameter = parameter
+        self.knob = knob
+    }
+}
+
 /// What a knob needs to write its parameter: the plugin, the parameter's range, and the part `from`
 /// to `to` of that range the knob's travel covers.
 public struct ControlWrite: Sendable {
@@ -177,7 +190,8 @@ public final class MIDIRouter {
 
     /// Applies at once, like `setRoutes`. A target with the node, parameter and knob of one in the
     /// table keeps its takeover and a move `takeMovedNodes` has not reported yet, and while its plugin
-    /// stays, what it wrote last; any other waits for its parameter.
+    /// stays, what it wrote last and, with the same range, its takeover hint; any other waits for its
+    /// parameter.
     public func setControls(_ targets: [ControlTarget]) {
         guard !isClosed else { return }
         routing.setControls(targets)
@@ -192,6 +206,12 @@ public final class MIDIRouter {
     /// The nodes a knob wrote to since the last call.
     public func takeMovedNodes() -> Set<UUID> {
         routing.takeMovedNodes()
+    }
+
+    /// Which way each waiting knob with a write has to turn to take over, as of its last move, a rearm
+    /// or its new table. A knob that follows, or has no write, is not in it.
+    public func takeoverHints() -> [ControlKey: TakeoverHint] {
+        routing.takeoverHints()
     }
 
     /// While on, the newest control change from any source, mapped or not, waits for
@@ -294,8 +314,8 @@ final class SourceTag: Sendable {
 /// change, or the test's thread for a `handle` in a test. Every push is under the lock, so none of
 /// these can overlap.
 ///
-/// The control table is the one thing the CoreMIDI thread changes in place: takeover, moved flags,
-/// last writes and the learned knob are values in it, made on the main actor, so nothing is made
+/// The control table is the one thing the CoreMIDI thread changes in place: takeover and its hint,
+/// moved flags, last writes and the learned knob are values in it, made on the main actor, so nothing is made
 /// under the lock. Nothing but `State` holds the table, or the first change would copy it. A control
 /// change calls into Audio Units, which take locks of their own, so it never does under this one: it
 /// notes its parameters and retains their plugins under the lock, reads their values outside it,
@@ -316,11 +336,26 @@ private final class MIDIRouting: Sendable {
         /// (`movedElsewhere`).
         var lastWritten: Float?
         var lastRead: Float?
+        /// Which way the knob has to turn while it waits, for `takeoverHints`. Nil while it follows, and
+        /// without a write.
+        var waitingHint: TakeoverHint?
+
+        /// Waits, with the hint of a knob that has not moved.
+        init(target: ControlTarget) {
+            self.target = target
+            waitingHint = unmovedHint
+        }
+
+        /// Nil without a write, or with equal ends, which take over at the first move.
+        var unmovedHint: TakeoverHint? {
+            target.write.flatMap { takeover.hint(knob: nil, currentFraction: $0.from, from: $0.from, to: $0.to) }
+        }
 
         mutating func rearm() {
             takeover.rearm()
             lastWritten = nil
             lastRead = nil
+            waitingHint = unmovedHint
         }
 
         /// The parameter, now at `value`, changed another way since the knob last wrote it: it is more
@@ -336,6 +371,13 @@ private final class MIDIRouting: Sendable {
 
         func isSame(as other: ControlTarget) -> Bool {
             target.node == other.node && target.parameter == other.parameter && target.knob.isSame(as: other.knob)
+        }
+
+        /// The same plugin and knob range as `old`, so the knob position of the parameter's value is
+        /// where it was, and so is `old`'s hint.
+        func writesLike(_ old: Control) -> Bool {
+            guard let write = target.write, let oldWrite = old.target.write else { return false }
+            return write.plugin === oldWrite.plugin && write.from == oldWrite.from && write.to == oldWrite.to
         }
     }
 
@@ -464,8 +506,11 @@ private final class MIDIRouting: Sendable {
                     if state.controls[control].movedElsewhere(to: pending[index].value, in: write.range) {
                         state.controls[control].rearm()
                     }
-                    guard state.controls[control].takeover.follow(knob: value, currentFraction: current, from: write.from, to: write.to)
-                    else { continue }
+                    let follows = state.controls[control].takeover.follow(knob: value, currentFraction: current, from: write.from, to: write.to)
+                    let takeover = state.controls[control].takeover
+                    state.controls[control].waitingHint =
+                        takeover.hint(knob: takeover.lastKnob, currentFraction: current, from: write.from, to: write.to)
+                    guard follows else { continue }
                     pending[index].value = write.range.value(atFraction: ControlMapping.fraction(forKnob: value, from: write.from, to: write.to))
                     pending[index].index = Int32(control)
                     state.controls[control].moved = true
@@ -512,6 +557,8 @@ private final class MIDIRouting: Sendable {
                 guard let old = state.controls.firstIndex(where: { $0.isSame(as: replaced[index].target) }) else { continue }
                 replaced[index].takeover = state.controls[old].takeover
                 replaced[index].moved = state.controls[old].moved
+                replaced[index].waitingHint =
+                    replaced[index].writesLike(state.controls[old]) ? state.controls[old].waitingHint : replaced[index].unmovedHint
                 if replaced[index].target.write?.plugin === state.controls[old].target.write?.plugin {
                     replaced[index].lastWritten = state.controls[old].lastWritten
                     replaced[index].lastRead = state.controls[old].lastRead
@@ -544,6 +591,25 @@ private final class MIDIRouting: Sendable {
             }
         }
         return Set(nodes)
+    }
+
+    func takeoverHints() -> [ControlKey: TakeoverHint] {
+        // Room for every target, as in `takeMovedNodes`. Copying a knob retains its source's name and
+        // makes nothing.
+        var hints: [(ControlKey, TakeoverHint)] = []
+        hints.reserveCapacity(state.withLock { $0.controls.count })
+        state.withLock { state in
+            for index in state.controls.indices {
+                guard let hint = state.controls[index].waitingHint else { continue }
+                guard hints.count < hints.capacity else { break }
+                let key = ControlKey(
+                    node: state.controls[index].target.node, parameter: state.controls[index].target.parameter,
+                    knob: state.controls[index].target.knob
+                )
+                hints.append((key, hint))
+            }
+        }
+        return Dictionary(hints, uniquingKeysWith: { first, _ in first })
     }
 
     func setLearning(_ on: Bool) {

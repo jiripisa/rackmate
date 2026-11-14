@@ -854,6 +854,97 @@ struct MIDIRouterTests {
         }
     }
 
+    // MARK: - Takeover hints
+
+    @Test func aWaitingKnobSaysWhichWayToTurn() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        try await withRouter([]) { router, _ in
+            let node = UUID()
+            let key = ControlKey(node: node, parameter: mix.id, knob: knob74)
+            router.setControls([control(knob74, node: node, mix, of: plugin)])
+            // Mix starts at 0.5, so the knob position is about 64.
+            router.handle(controlChange(74, 10), fromSource: "A", at: 0)
+            #expect(router.takeoverHints() == [key: .turnUp])
+
+            // Going straight from 10 to 100 would cross 64 and take over.
+            router.rearmControls(node: node)
+            router.handle(controlChange(74, 100), fromSource: "A", at: 0)
+            #expect(router.takeoverHints() == [key: .turnDown])
+        }
+    }
+
+    @Test func aKnobThatTookOverHasNoHint() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        try await withRouter([]) { router, _ in
+            router.setControls([control(knob74, node: UUID(), mix, of: plugin)])
+            router.handle(controlChange(74, 10), fromSource: "A", at: 0)
+            router.handle(controlChange(74, 70), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: plugin) - mixAt(70)) < tolerance)
+            #expect(router.takeoverHints().isEmpty)
+        }
+    }
+
+    @Test func aNewTableStartsWithMoveTheKnob() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        try await withRouter([]) { router, _ in
+            let node = UUID()
+            let knob75 = ControlKnob(source: "A", channel: 1, controller: 75)
+            router.setControls([
+                control(knob74, node: node, mix, of: plugin),
+                // A row without a write is dimmed and shows nothing.
+                ControlTarget(knob: knob75, node: node, parameter: mix.id, write: nil),
+            ])
+            #expect(router.takeoverHints() == [ControlKey(node: node, parameter: mix.id, knob: knob74): .moveKnob])
+        }
+    }
+
+    @Test func equalEndsShowNoHint() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        try await withRouter([]) { router, _ in
+            let node = UUID()
+            router.setControls([control(knob74, node: node, mix, of: plugin, from: 0.3, to: 0.3)])
+            #expect(router.takeoverHints().isEmpty)
+            router.rearmControls(node: node)
+            #expect(router.takeoverHints().isEmpty)
+        }
+    }
+
+    @Test func aRearmShowsMoveTheKnob() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        try await withRouter([]) { router, _ in
+            let node = UUID()
+            router.setControls([control(knob74, node: node, mix, of: plugin)])
+            router.handle(controlChange(74, 64), fromSource: "A", at: 0)
+            #expect(router.takeoverHints().isEmpty)
+            router.rearmControls(node: node, parameter: mix.id)
+            #expect(router.takeoverHints() == [ControlKey(node: node, parameter: mix.id, knob: knob74): .moveKnob])
+        }
+    }
+
+    @Test func aNewTableKeepsTheHintOfATargetThatStaysAsItWas() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        let cutoff = try parameter("Cutoff", of: plugin)
+        try await withRouter([]) { router, _ in
+            let node = UUID()
+            let mixKey = ControlKey(node: node, parameter: mix.id, knob: knob74)
+            router.setControls([control(knob74, node: node, mix, of: plugin)])
+            router.handle(controlChange(74, 10), fromSource: "A", at: 0)
+
+            router.setControls([control(knob74, node: node, mix, of: plugin), control(knob74, node: node, cutoff, of: plugin)])
+            #expect(router.takeoverHints() == [mixKey: .turnUp, ControlKey(node: node, parameter: cutoff.id, knob: knob74): .moveKnob])
+
+            // A new range moves the knob position of the value, so the way is not known until the next move.
+            router.setControls([control(knob74, node: node, mix, of: plugin, from: 0, to: 0.5)])
+            #expect(router.takeoverHints() == [mixKey: .moveKnob])
+        }
+    }
+
     @Test func noWriteReachesAPluginAfterItsTableIsReplaced() async throws {
         var plugin: HostedPlugin? = try await testControls()
         weak let unit = plugin
