@@ -113,16 +113,13 @@ struct MIDIControlStrip: View {
 
     private func row(_ mapping: ControlMapping, index: Int) -> some View {
         HStack(spacing: Self.columnGap) {
-            HStack(spacing: 8) {
+            // The name comes first and is cut only when it alone does not fit; the hint gets what is left.
+            HStack(spacing: 0) {
                 Text(mapping.parameterName)
                     .foregroundStyle(Color.legend)
-                if let hint = takeoverHint(for: mapping) {
-                    // The name gives way first. The hint is cut only in a column too narrow for it alone,
-                    // rather than running into the knob column.
-                    Text(hint.text)
-                        .foregroundStyle(Color.muted)
-                        .layoutPriority(1)
-                }
+                    .lineLimit(1)
+                    .layoutPriority(1)
+                if let hint = takeoverHint(for: mapping) { HintText(hint: hint) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Text(mapping.knob.label)
@@ -175,12 +172,41 @@ struct MIDIControlStrip: View {
     }
 }
 
-private extension TakeoverHint {
-    var text: String {
-        switch self {
+/// A takeover hint in what is left of the Parameter column after the name: the text, cut short if need
+/// be, then only its arrow below `minimumTextWidth`, then nothing.
+private struct HintText: View {
+    let hint: TakeoverHint
+
+    private static let gap: CGFloat = 8
+    private static let minimumTextWidth: CGFloat = 40
+
+    var body: some View {
+        // The last view goes when nothing else fits, so the gap goes with the hint.
+        ViewThatFits(in: .horizontal) {
+            Text(text)
+                .lineLimit(1)
+                .frame(minWidth: Self.minimumTextWidth, idealWidth: Self.minimumTextWidth, maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, Self.gap)
+            if let arrow { Text(arrow).padding(.leading, Self.gap) }
+            Color.clear.frame(width: 0, height: 0)
+        }
+        .foregroundStyle(Color.muted)
+        .accessibilityLabel(text)
+    }
+
+    private var text: String {
+        switch hint {
         case .turnUp: "↑ turn up to take over"
         case .turnDown: "↓ turn down to take over"
         case .moveKnob: "move the knob to take over"
+        }
+    }
+
+    private var arrow: String? {
+        switch hint {
+        case .turnUp: "↑"
+        case .turnDown: "↓"
+        case .moveKnob: nil
         }
     }
 }
