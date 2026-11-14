@@ -857,7 +857,8 @@
         <a href="#midi-in"><span class="ui caps">MIDI in</span></a> kanálu nastavený jakkoli.</p>
         <p>Přiřazení pluginu jsou v pásu <span class="ui caps">MIDI control</span> pod jeho vlastním
         vzhledem v <a href="#open-plugin">okně pluginu</a>. Okno je alespoň tak široké jako pás a
-        s přibývajícími řádky roste dolů.</p>
+        s přibývajícími řádky roste dolů, nejvýš na šest řádků; při více řádcích se seznam
+        posouvá.</p>
         <figure class="fig medium">
           <img src="../assets/manual/midi-control.png" alt="Okno AUDelay od Applu s pásem MIDI CONTROL pod vzhledem pluginu: rozsvícená klávesa LEARN, nápověda, menu Pick a parameter a řádek pro Dry/Wet Mix s knoflíkem a rozsahem 0 % až 100 %.">
           <figcaption>AUDelay s pásem MIDI CONTROL, Learn zapnutý.</figcaption>
@@ -871,14 +872,21 @@
           řádek s názvem parametru a textem <span class="ui">waiting for a knob…</span>. Pohnete-li
           před knoflíkem jiným prvkem, parametr se nahradí.</li>
           <li>Pohněte knoflíkem na kontroleru. Řádek ukáže knoflík jako zařízení, MIDI kanál a číslo
-          controlleru, třeba <span class="ui">OXI E16 · CH 1 · CC 74</span>, a od té chvíle
-          funguje.</li>
+          controlleru, třeba <span class="ui">OXI E16 · CH 1 · CC 74</span>. Jako každé nové
+          přiřazení čeká, dokud knoflík nepřejde aktuální hodnotu parametru; od té chvíle parametr
+          knoflík následuje (viz <a href="#takeover">Převzetí</a>).</li>
         </ol>
         <p>Learn zůstane zapnutý, takže můžete rovnou pokračovat dalším prvkem. Počítají se jen
-        pohyby po zapnutí Learn a vezme se jen knoflík, kterým pohnete, když řádek čeká: kontroler
-        nebo sekvencer, který posílá control change, nic nevytvoří sám. Dalším stiskem
+        pohyby po zapnutí Learn a řádek vezme jen knoflík, kterým pohnete až po jeho prvku: knoflík
+        otočený chvilku předtím připadne řádku, který čekal tehdy, nebo žádnému. Kontroler nebo
+        sekvencer, který posílá control change, když žádný řádek nečeká, nic nevytvoří. Pokud je
+        posílá, zatímco řádek čeká, může si ten řádek vzít, proto ho při učení zastavte. Dalším stiskem
         <span class="ui caps">Learn</span> ho vypnete; zavření okna udělá totéž. Naučíte-li knoflík,
         který už stejný parametr ovládá, druhý řádek nevznikne a starý si nechá rozsah.</p>
+        <p>Dokud je Learn zapnutý v kterémkoli okně, nedojde k nástrojům žádný control change
+        z žádného zdroje, takže nástroj nemůže na učený knoflík odpovědět pohybem vlastního prvku.
+        Týká se to i sustain pedálu a modulačního kolečka. Noty a všechny ostatní zprávy jdou
+        dál.</p>
         <p>Přiřazení lze vytvořit jen při otevřeném okně pluginu. Po zavření okna dál funguje.</p>
 
         <h3 id="pick-parameter">Pick a parameter</h3>
@@ -900,17 +908,21 @@
         pohybem tak jde filtr otevřít a reverb zavřít.</p>
 
         <h3 id="remove-mapping">Smazání řádku</h3>
-        <p>Tlačítko <span class="ui">×</span> na konci řádku přiřazení smaže. Knoflík pak k pluginu
-        zase dojde jako obyčejný control change.</p>
+        <p>Tlačítko <span class="ui">×</span> na konci řádku přiřazení smaže. Knoflík pak
+        k nástrojům zase dojde jako obyčejný control change, pokud ho dál nepoužívá jiné přiřazení
+        v racku.</p>
 
         <h3 id="takeover">Převzetí</h3>
         <p>Parametr nikdy neskočí, když se knoflíku dotknete. Jakmile přiřazení začne čekat,
         parametr zůstane, kde je, dokud knoflík nepřejde jeho aktuální hodnotu; od té chvíle ho
         následuje. Přiřazení čeká:</p>
         <ul>
+          <li>po naučení knoflíku,</li>
           <li>po otevření racku,</li>
-          <li>po výběru presetu a</li>
-          <li>poté, co parametrem v okně pluginu pohnete myší.</li>
+          <li>po výběru presetu,</li>
+          <li>poté, co parametrem v okně pluginu pohnete myší, a</li>
+          <li>poté, co se parametr změnil jinak, třeba program changem ze sekvenceru nebo vlastní
+          modulací pluginu. Přiřazení to pozná při dalším pohybu knoflíku.</li>
         </ul>
         <p>Pohyby, které dělá sám knoflík, ho čekat nenutí. Leží-li aktuální hodnota mimo rozsah,
         přiřazení převezme na bližším konci rozsahu. Jsou-li oba konce stejné, parametr se drží
@@ -924,7 +936,9 @@
         <p>Control change, který odpovídá přiřazení v racku zařízením, MIDI kanálem a číslem
         controlleru, už k žádnému nástroji nedojde. Jinak by knoflík dělal dvě věci: přiřazenou a tu,
         kterou má nástroj sám. Platí to i tehdy, když přiřazení čeká na převzetí, nebo když se jeho
-        plugin nenačetl či přišel o parametr. Všechny ostatní zprávy jdou nástrojům jako dřív.</p>
+        plugin nenačetl či přišel o parametr. Všechny ostatní zprávy jdou nástrojům jako dřív.
+        Dokud je zapnutý Learn, nedojde k nástroji žádný control change; viz
+        <a href="#learn">Naučení knoflíku</a>.</p>
 
         <h3 id="mapping-saved">Ukládání</h3>
         <p>Přiřazení se ukládají s rackem a fungují hned po jeho otevření. K presetu nepatří:

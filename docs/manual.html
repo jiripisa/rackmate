@@ -865,7 +865,8 @@
         <a href="#midi-in"><span class="ui caps">MIDI in</span></a> of a channel says.</p>
         <p>The mappings of a plugin are in the <span class="ui caps">MIDI control</span> strip under
         its own view in the <a href="#open-plugin">plugin window</a>. The window is at least as
-        wide as the strip and grows downwards with the rows.</p>
+        wide as the strip and grows downwards with the rows, up to six; with more, the list
+        scrolls.</p>
         <figure class="fig medium">
           <img src="assets/manual/midi-control.png" alt="The window of Apple's AUDelay with the MIDI CONTROL strip under the plugin's view: the LEARN key lit, the hint, the Pick a parameter menu, and a row for Dry/Wet Mix with its knob and a range of 0 % to 100 %.">
           <figcaption>AUDelay with the MIDI CONTROL strip, Learn on.</figcaption>
@@ -879,15 +880,22 @@
           with the parameter's name and <span class="ui">waiting for a knob…</span>. Moving another
           control before a knob arrives replaces the parameter.</li>
           <li>Move a knob on your controller. The row shows the knob as the device, the MIDI
-          channel and the controller number, such as <span class="ui">OXI E16 · CH 1 · CC 74</span>,
-          and works from that moment.</li>
+          channel and the controller number, such as <span class="ui">OXI E16 · CH 1 · CC 74</span>.
+          Like every new mapping, it waits until the knob passes the parameter's current value, and
+          from then on the parameter follows the knob (see <a href="#takeover">Takeover</a>).</li>
         </ol>
         <p>Learn stays on, so you can go on with the next control. Only moves made after Learn was
-        switched on count, and only the knob you move while a row is waiting is taken: a controller
-        or a sequencer that sends control changes creates nothing by itself. Press
+        switched on count, and a row takes only a knob moved after its control: a knob you turned a
+        moment before goes to the row that was waiting then, or to none. A controller or a sequencer
+        that sends control changes while no row is waiting creates nothing. One that sends while a
+        row waits can take that row, so stop it while you learn. Press
         <span class="ui caps">Learn</span> again to switch it off; closing the window does the
         same. Learning a knob that already drives the same parameter adds no second row and keeps
         the range of the old one.</p>
+        <p>While Learn is on in any window, no control change reaches an instrument, from any source,
+        so an instrument cannot answer the knob you are learning by moving a control of its own.
+        That includes the sustain pedal and the mod wheel. Notes and every other message still go
+        through.</p>
         <p>A mapping can be made only while the plugin's window is open. It keeps working after the
         window is closed.</p>
 
@@ -911,16 +919,20 @@
 
         <h3 id="remove-mapping">Delete a row</h3>
         <p>The <span class="ui">×</span> at the end of a row deletes the mapping. The knob then
-        reaches the plugin as an ordinary control change again.</p>
+        reaches the instruments as an ordinary control change again, unless another mapping in the
+        rack still uses it.</p>
 
         <h3 id="takeover">Takeover</h3>
         <p>A parameter never jumps when you touch a knob. After a mapping starts to wait, the
         parameter stays where it is until the knob passes its current value; from then on it
         follows the knob. A mapping waits:</p>
         <ul>
+          <li>after you learn it,</li>
           <li>after you open a rack,</li>
-          <li>after you pick a preset, and</li>
-          <li>after you move the parameter with the mouse in the plugin window.</li>
+          <li>after you pick a preset,</li>
+          <li>after you move the parameter with the mouse in the plugin window, and</li>
+          <li>after the parameter changed another way, such as by a program change from a sequencer
+          or by the plugin's own modulation. The mapping notices at the next move of the knob.</li>
         </ul>
         <p>Moves the knob itself makes do not make it wait. When the current value is outside the
         range, the mapping takes over at the nearer end of the range. When both ends are equal, the
@@ -935,7 +947,8 @@
         controller number, no longer reaches any instrument. Otherwise the knob would do two things:
         the mapped one and the instrument's own. This holds while the mapping waits for takeover and
         when its plugin has not loaded or has lost the parameter. Every other message goes to the
-        instruments as before.</p>
+        instruments as before. While Learn is on, no control change reaches an instrument at all; see
+        <a href="#learn">Learning a knob</a>.</p>
 
         <h3 id="mapping-saved">Saving</h3>
         <p>The mappings are saved with the rack and work as soon as it opens. They do not belong to
