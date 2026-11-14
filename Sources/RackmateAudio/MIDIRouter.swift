@@ -62,12 +62,23 @@ public struct ControlWrite: Sendable {
     public var range: ParameterRange
     public var from: Double
     public var to: Double
+    /// Whether the router reads the parameter back right after each write, so that a plugin which
+    /// snaps or clamps what it is given keeps following the knob (`movedElsewhere`).
+    ///
+    /// Not for a version 3 unit: its v2 bridge holds a read for about 33 ms after a write, and that
+    /// would hold up the CoreMIDI thread, and every note behind the knob, on each write. So a v3
+    /// parameter that snaps can still stall the knob. The read before each write has the same hold
+    /// when control changes come faster than it, which throttles fast turns on v3 units; that is a
+    /// known follow-up.
+    public var readsBack: Bool
 
-    public init(plugin: HostedPlugin, range: ParameterRange, from: Double, to: Double) {
+    /// `readsBack` is decided by the unit's kind unless given.
+    public init(plugin: HostedPlugin, range: ParameterRange, from: Double, to: Double, readsBack: Bool? = nil) {
         self.plugin = plugin
         self.range = range
         self.from = from
         self.to = to
+        self.readsBack = readsBack ?? !plugin.isAUv3
     }
 }
 
@@ -288,9 +299,10 @@ final class SourceTag: Sendable {
 /// under the lock. Nothing but `State` holds the table, or the first change would copy it. A control
 /// change calls into Audio Units, which take locks of their own, so it never does under this one: it
 /// notes its parameters and retains their plugins under the lock, reads their values outside it,
-/// decides under the lock again, writes and reads back outside it, and notes what it read under the
-/// lock a third time. A table replaced meanwhile writes nothing, but a write that passed its second
-/// check can still land after `setControls` or `close`, on a plugin kept alive by its own retain.
+/// decides under the lock again, writes outside it and reads back where `ControlWrite.readsBack`
+/// says so, and notes what it read under the lock a third time. A table replaced meanwhile writes
+/// nothing, but a write that passed its second check can still land after `setControls` or `close`,
+/// on a plugin kept alive by its own retain.
 private final class MIDIRouting: Sendable {
 
     private struct Control {
@@ -298,9 +310,10 @@ private final class MIDIRouting: Sendable {
         var takeover = Takeover()
         /// Set when the knob wrote, cleared by `takeMovedNodes`.
         var moved = false
-        /// What the knob wrote last, while it follows, and what the plugin read back right after.
-        /// A plugin may snap, clamp or round what it is given, so the next read-back is compared
-        /// with both (`movedElsewhere`).
+        /// What the knob wrote last, while it follows, and what the plugin read back right after, which
+        /// stays nil for a write that does not read back (`ControlWrite.readsBack`). A plugin may snap,
+        /// clamp or round what it is given, so the next read-back is compared with both
+        /// (`movedElsewhere`).
         var lastWritten: Float?
         var lastRead: Float?
 
@@ -425,7 +438,7 @@ private final class MIDIRouting: Sendable {
                     guard count < pending.count, let write = state.controls[index].target.write else { continue }
                     let entry = PendingWrite(
                         plugin: .passRetained(write.plugin), unit: write.plugin.audioUnit, index: Int32(index),
-                        parameter: state.controls[index].target.parameter, value: 0
+                        parameter: state.controls[index].target.parameter, value: 0, readsBack: write.readsBack
                     )
                     (pending.baseAddress! + count).initialize(to: entry)
                     count += 1
@@ -461,21 +474,23 @@ private final class MIDIRouting: Sendable {
                 }
             }
 
-            var wrote = false
+            var readBack = false
             for index in 0..<count where pending[index].index >= 0 {
                 var parameter = AudioUnitParameter(
                     mAudioUnit: pending[index].unit, mParameterID: pending[index].parameter, mScope: kAudioUnitScope_Global, mElement: 0
                 )
                 AUParameterSet(parameterListener, nil, &parameter, pending[index].value, 0)
+                // Never for a v3 unit; `ControlWrite.readsBack` says why.
+                guard pending[index].readsBack else { continue }
                 AudioUnitGetParameter(pending[index].unit, pending[index].parameter, kAudioUnitScope_Global, 0, &pending[index].value)
-                wrote = true
+                readBack = true
             }
 
             // A rearm in between leaves no `lastWritten`, so a read noted after it compares with nothing.
-            if wrote {
+            if readBack {
                 state.withLock { state in
                     guard state.controlsGeneration == generation else { return }
-                    for index in 0..<count where pending[index].index >= 0 {
+                    for index in 0..<count where pending[index].index >= 0 && pending[index].readsBack {
                         state.controls[Int(pending[index].index)].lastRead = pending[index].value
                     }
                 }
@@ -646,6 +661,8 @@ private struct PendingWrite {
     var parameter: AudioUnitParameterID
     /// The parameter's value read in between, then the value to write, then what was read back after it.
     var value: AudioUnitParameterValue
+    /// `ControlWrite.readsBack`.
+    var readsBack: Bool
 }
 
 /// What one control change puts on the stack. Swift keeps a temporary allocation of up to 1 KiB there

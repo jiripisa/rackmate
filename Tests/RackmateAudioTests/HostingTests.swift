@@ -241,6 +241,13 @@ struct HostingTests {
         #expect(value == 0.75)
     }
 
+    @Test("A unit knows whether it is a version 3 unit")
+    func unitKind() async throws {
+        registerTestUnits()
+        #expect(try await HostedPlugin.load(PluginID(type: "aufx", subtype: "PlCt", manufacturer: "Plug")).isAUv3)
+        #expect(try await !HostedPlugin.load(PluginID(type: "aufx", subtype: "dely", manufacturer: "appl")).isAUv3)
+    }
+
     @Test("Apple's delay lists its parameters")
     func appleDelayParameters() async throws {
         let plugin = try await HostedPlugin.load(PluginID(type: "aufx", subtype: "dely", manufacturer: "appl"))

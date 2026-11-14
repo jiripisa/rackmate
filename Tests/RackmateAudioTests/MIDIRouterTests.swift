@@ -95,11 +95,16 @@ private func parameter(_ name: String, of plugin: HostedPlugin) throws -> Plugin
     try #require(plugin.parameters().first { $0.name == name })
 }
 
-/// `knob` driving `parameter` of `plugin` over `from` to `to`.
+/// `knob` driving `parameter` of `plugin` over `from` to `to`. `readsBack` overrides what the unit's kind
+/// decides.
 private func control(
-    _ knob: ControlKnob, node: UUID, _ parameter: PluginParameter, of plugin: HostedPlugin, from: Double = 0, to: Double = 1
+    _ knob: ControlKnob, node: UUID, _ parameter: PluginParameter, of plugin: HostedPlugin, from: Double = 0, to: Double = 1,
+    readsBack: Bool? = nil
 ) -> ControlTarget {
-    ControlTarget(knob: knob, node: node, parameter: parameter.id, write: ControlWrite(plugin: plugin, range: parameter.range, from: from, to: to))
+    ControlTarget(
+        knob: knob, node: node, parameter: parameter.id,
+        write: ControlWrite(plugin: plugin, range: parameter.range, from: from, to: to, readsBack: readsBack)
+    )
 }
 
 private func value(of parameter: PluginParameter, in plugin: HostedPlugin) -> Float {
@@ -116,6 +121,20 @@ private func set(_ parameter: PluginParameter, of plugin: HostedPlugin, to value
 private func setElsewhere(_ parameter: PluginParameter, of plugin: HostedPlugin, to value: Float) {
     var address = AudioUnitParameter(mAudioUnit: plugin.audioUnit, mParameterID: parameter.id, mScope: kAudioUnitScope_Global, mElement: 0)
     AUParameterSet(nil, nil, &address, value, 0)
+}
+
+/// Sends knob 74 through `positions` and reads `parameter` after each. A v3 unit holds a read right after
+/// a write for about 30 ms, so this runs off the main actor, as on the CoreMIDI thread, and the clock
+/// polls of other tests keep running.
+private func turn(_ router: MIDIRouter, through positions: [Int], reading parameter: PluginParameter, of plugin: HostedPlugin) async -> [Float] {
+    await withCheckedContinuation { (continuation: CheckedContinuation<[Float], Never>) in
+        DispatchQueue.global(qos: .userInteractive).async {
+            continuation.resume(returning: positions.map { position in
+                router.handle(controlChange(74, UInt8(position)), fromSource: "A", at: 0)
+                return value(of: parameter, in: plugin)
+            })
+        }
+    }
 }
 
 /// Where a knob at `position` puts a parameter mapped 0 to 1 with a linear range of 0 to 1.
@@ -788,20 +807,25 @@ struct MIDIRouterTests {
         let plugin = try await testControls()
         let steps = try parameter("Steps", of: plugin)
         try await withRouter([]) { router, _ in
-            router.setControls([control(knob74, node: UUID(), steps, of: plugin)])
-            // Steps starts at 0, so 0 takes over; it reads back on 0, 1/3, 2/3 or 1 whatever the knob wrote.
+            // Read back after each write, as for a v2 unit; Test Controls is a v3 unit, which is not.
+            router.setControls([control(knob74, node: UUID(), steps, of: plugin, readsBack: true)])
             let positions = Array(stride(from: 0, through: 125, by: 5))
-            // A v3 unit holds a read right after a write for about 30 ms, so the knob turns off the main
-            // actor, as on the CoreMIDI thread, and the clock polls of other tests keep running.
-            let read = await withCheckedContinuation { (continuation: CheckedContinuation<[Float], Never>) in
-                DispatchQueue.global(qos: .userInteractive).async {
-                    continuation.resume(returning: positions.map { position in
-                        router.handle(controlChange(74, UInt8(position)), fromSource: "A", at: 0)
-                        return value(of: steps, in: plugin)
-                    })
-                }
-            }
+            let read = await turn(router, through: positions, reading: steps, of: plugin)
             #expect(read == positions.map { (Float($0) / 127 * 3).rounded() / 3 })
+        }
+    }
+
+    @Test func aV3UnitGetsNoReadAfterAWrite() async throws {
+        let plugin = try await testControls()
+        #expect(plugin.isAUv3)
+        let steps = try parameter("Steps", of: plugin)
+        try await withRouter([]) { router, _ in
+            router.setControls([control(knob74, node: UUID(), steps, of: plugin)])
+            // Without a read after the write, the snapped read-back of 10 looks like a move made another
+            // way, and the knob waits again for a value it never passes: the known cost for v3 units.
+            let positions = Array(stride(from: 0, through: 125, by: 5))
+            let read = await turn(router, through: positions, reading: steps, of: plugin)
+            #expect(read == positions.map { _ in 0 })
         }
     }
 

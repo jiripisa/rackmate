@@ -51,6 +51,8 @@ public final class HostedPlugin: @unchecked Sendable {
 
     public let id: PluginID
     public let audioUnit: AudioUnit
+    /// A version 3 unit, which runs in process through the system's v2 bridge.
+    public let isAUv3: Bool
     /// Channels per bus: 2, or 1 when `configure` found the unit refuses stereo.
     public private(set) var channelCount: UInt32 = 2
     private var isInitialized = false
@@ -58,9 +60,10 @@ public final class HostedPlugin: @unchecked Sendable {
     /// not own it. `releaseView` lets go of it.
     var viewOwner: AnyObject?
 
-    private init(id: PluginID, audioUnit: AudioUnit) {
+    private init(id: PluginID, audioUnit: AudioUnit, isAUv3: Bool) {
         self.id = id
         self.audioUnit = audioUnit
+        self.isAUv3 = isAUv3
     }
 
     /// The last reference can drop on any thread. No render reaches the unit by then, because the
@@ -95,7 +98,10 @@ public final class HostedPlugin: @unchecked Sendable {
             }
             AudioComponentInstantiate(component, .loadInProcess, completion)
         }
-        return HostedPlugin(id: id, audioUnit: unit.unit)
+        var found = AudioComponentDescription()
+        AudioComponentGetDescription(component, &found)
+        let isAUv3 = found.componentFlags & AudioComponentFlags.isV3AudioUnit.rawValue != 0
+        return HostedPlugin(id: id, audioUnit: unit.unit, isAUv3: isAUv3)
     }
 
     /// Frees the main thread long enough to draw, so a "Loading" state shows before a plugin holds it up.
