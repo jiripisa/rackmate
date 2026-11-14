@@ -5,13 +5,13 @@
     <link>https://jiripisa.github.io/rackmate/</link>
     <description>Rackmate updates</description>
     <item>
-      <title>Rackmate 1.1.2</title>
-      <sparkle:version>1.1.2</sparkle:version>
-      <sparkle:shortVersionString>1.1.2</sparkle:shortVersionString>
+      <title>Rackmate 1.2.0</title>
+      <sparkle:version>1.2.0</sparkle:version>
+      <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-      <pubDate>Sun, 01 Nov 2026 22:12:22 +0000</pubDate>
-      <description><![CDATA[<ul><li>Plugins protected by iLok, such as Zen Delay Virtual, no longer close the app when they load.</li></ul>]]></description>
-      <enclosure url="https://github.com/jiripisa/rackmate/releases/download/v1.1.2/Rackmate-1.1.2.dmg" type="application/octet-stream" sparkle:edSignature="mI5A8NFEyAzmNw2hHbZNr80ZnqBviWf3M6VwQzDiVsnb0CcS4UiYCRxeUG4LySXKEt8h9yR+M9ztOApKJ44pDw==" length="7255175"/>
+      <pubDate>Sat, 14 Nov 2026 23:25:02 +0000</pubDate>
+      <description><![CDATA[<ul><li>MIDI learn: map knobs of a MIDI controller to plugin parameters, with range, direction and soft takeover, in a new MIDI CONTROL strip under each plugin window. A row that waits for takeover says which way to turn the knob. While Learn is on, control changes reach no instrument.</li></ul>]]></description>
+      <enclosure url="https://github.com/jiripisa/rackmate/releases/download/v1.2.0/Rackmate-1.2.0.dmg" type="application/octet-stream" sparkle:edSignature="OaZzfBddFlFHreEz2uixmpFLgN1vl847Q1M/drWoIAwCqp9v5A+Pg7vV3NddL4kWlXj7YYveJ6kcb1/CI5UVBg==" length="7432715"/>
     </item>
   </channel>
 </rss>
