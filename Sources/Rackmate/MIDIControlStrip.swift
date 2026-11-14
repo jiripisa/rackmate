@@ -113,9 +113,18 @@ struct MIDIControlStrip: View {
 
     private func row(_ mapping: ControlMapping, index: Int) -> some View {
         HStack(spacing: Self.columnGap) {
-            Text(mapping.parameterName)
-                .foregroundStyle(Color.legend)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 8) {
+                Text(mapping.parameterName)
+                    .foregroundStyle(Color.legend)
+                if let hint = takeoverHint(for: mapping) {
+                    // The name gives way first. The hint is cut only in a column too narrow for it alone,
+                    // rather than running into the knob column.
+                    Text(hint.text)
+                        .foregroundStyle(Color.muted)
+                        .layoutPriority(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             Text(mapping.knob.label)
                 .foregroundStyle(Color.led)
                 .truncationMode(.middle)
@@ -151,10 +160,28 @@ struct MIDIControlStrip: View {
         .background(Color.displayBackground)
     }
 
+    /// Which way the row's knob has to turn to take over, as of the model's last poll. A dimmed row has
+    /// none: its knob may still have a write while its device is gone.
+    private func takeoverHint(for mapping: ControlMapping) -> TakeoverHint? {
+        guard isWorking(mapping) else { return nil }
+        let key = ControlKey(node: location.effect ?? location.channel, parameter: mapping.parameter, knob: mapping.knob)
+        return model.takeoverHints[key]
+    }
+
     /// A row does nothing while its device is gone or its plugin has no such parameter.
     private func isWorking(_ mapping: ControlMapping) -> Bool {
         // By bytes, as the router tells sources apart.
         sources.contains { $0.utf8.elementsEqual(mapping.knob.source.utf8) } && parameterIDs.contains(mapping.parameter)
+    }
+}
+
+private extension TakeoverHint {
+    var text: String {
+        switch self {
+        case .turnUp: "↑ turn up to take over"
+        case .turnDown: "↓ turn down to take over"
+        case .moveKnob: "move the knob to take over"
+        }
     }
 }
 
