@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import RackmateCore
 
@@ -31,5 +32,31 @@ struct ControlMappingTests {
         slot.learn(ControlMapping(knob: .fixture(), parameter: 3, parameterName: "Cutoff"))
         slot.learn(ControlMapping(knob: .fixture(), parameter: 4, parameterName: "Mix"))
         #expect(slot.controls.map(\.parameter) == [3, 4])
+    }
+
+    @Test func controlNodesListChannelAndEffectMappingsWithTheirNodeIDs() {
+        let cutoff = ControlMapping(knob: .fixture(), parameter: 3, parameterName: "Cutoff")
+        let mix = ControlMapping(knob: ControlKnob(source: "Faderfox", channel: 1, controller: 75), parameter: 4, parameterName: "Mix")
+        let drive = ControlMapping(knob: .fixture(), parameter: 5, parameterName: "Drive")
+        let width = ControlMapping(knob: .fixture(), parameter: 6, parameterName: "Width")
+        var first = InsertEffect.fixture()
+        first.slot.controls = [mix]
+        let unmapped = InsertEffect.fixture()
+        var second = InsertEffect.fixture()
+        second.slot.controls = [drive]
+        var instrument = Channel.fixture(effectRows: [[first, unmapped], [second]])
+        instrument.slot.controls = [cutoff]
+        var effect = Channel.fixture(kind: .effect)
+        effect.slot.controls = [width]
+        let configuration = Configuration.fixture(channels: [instrument, .fixture(), effect])
+
+        let nodes = configuration.controlNodes
+
+        #expect(nodes.map(\.node) == [instrument.id, first.id, second.id, effect.id])
+        #expect(nodes.map(\.mapping) == [cutoff, mix, drive, width])
+    }
+
+    @Test func aRackWithoutMappingsHasNoControlNodes() {
+        #expect(Configuration.fixture(channels: [.fixture(effectRows: [[.fixture()]])]).controlNodes.isEmpty)
     }
 }

@@ -57,6 +57,10 @@ public final class AudioSession {
     @ObservationIgnored private var isSwitching = false
     @ObservationIgnored private var isClosed = false
     @ObservationIgnored private var ticker: Task<Void, Never>?
+    /// The plugin each node with knobs had when the router last got them. Each is still hosted by the
+    /// runner, since the runner reports every plugin that leaves before it can go, so no identifier
+    /// here can belong to a newer plugin.
+    @ObservationIgnored private var controlledPlugins: [UUID: ObjectIdentifier] = [:]
 
     public init(cache: CapabilityCache, engine: AudioEngine = AudioEngine()) {
         self.cache = cache
@@ -242,6 +246,7 @@ public final class AudioSession {
             deviceInputs: values.deviceInputs, deviceOutputs: values.deviceOutputs, cache: cache
         )
         runner.onMIDISlotsAssigned = { [weak self] in self?.refreshRoutes() }
+        runner.onPluginsChanged = { [weak self] in self?.refreshControls() }
         self.runner = runner
         runnerValues = values
         return true
@@ -257,6 +262,9 @@ public final class AudioSession {
         self.runner = nil
         runnerValues = nil
         router.setRoutes([])
+        // The knobs hold their plugins, which have to go with the runner.
+        router.setControls([])
+        controlledPlugins = [:]
         if engine.canRender {
             runner.abandon()
             _ = Unmanaged.passRetained(runner)
@@ -273,6 +281,33 @@ public final class AudioSession {
                 guard let route = channel.midiIn, let slot = runner.midiSlot(channel: channel.id) else { return nil }
                 return MIDIRouteTarget(route: route, slot: slot, channel: channel.id)
             })
+        refreshControls()
+    }
+
+    /// Gives the router the knobs of `wanted`, each with the plugin that runs at its node. A knob
+    /// whose plugin has not loaded, failed or lacks the parameter gets no write and is held back.
+    ///
+    /// The router keeps a knob's takeover while its node, parameter and knob stay, but a new instance
+    /// of the plugin starts from its own values, so its knobs wait again. They are rearmed in the old
+    /// table, whose takeover the new one takes on, so no knob writes the new plugin before it waits.
+    private func refreshControls() {
+        guard let runner, let wanted else { return }
+        var plugins: [UUID: ObjectIdentifier] = [:]
+        let targets = wanted.controlNodes.map { node, mapping in
+            let plugin = runner.plugin(node: node)
+            if let plugin { plugins[node] = ObjectIdentifier(plugin) }
+            let write = plugin.flatMap { plugin in
+                plugin.parameter(mapping.parameter).map {
+                    ControlWrite(plugin: plugin, range: $0.range, from: mapping.from, to: mapping.to)
+                }
+            }
+            return ControlTarget(knob: mapping.knob, node: node, parameter: mapping.parameter, write: write)
+        }
+        for (node, plugin) in plugins where controlledPlugins[node] != plugin {
+            router.rearmControls(node: node)
+        }
+        controlledPlugins = plugins
+        router.setControls(targets)
     }
 }
 

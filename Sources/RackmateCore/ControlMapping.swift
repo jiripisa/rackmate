@@ -73,3 +73,15 @@ extension PluginSlot {
         controls.append(mapping)
     }
 }
+
+extension Configuration {
+    /// Every mapping in the rack with the node that holds its plugin: a channel's slot under the channel
+    /// ID, an effect's under the effect ID, in channel then row order. These are the nodes the MIDI
+    /// router writes to.
+    public var controlNodes: [(node: UUID, mapping: ControlMapping)] {
+        channels.flatMap { channel in
+            channel.slot.controls.map { (node: channel.id, mapping: $0) }
+                + channel.effects.joined().flatMap { effect in effect.slot.controls.map { (node: effect.id, mapping: $0) } }
+        }
+    }
+}
