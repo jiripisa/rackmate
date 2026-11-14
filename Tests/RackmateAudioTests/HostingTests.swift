@@ -212,4 +212,40 @@ struct HostingTests {
         try plugin.restore(state)
         #expect(try plugin.fullState() == state)
     }
+
+    @Test("Parameters come with names, ranges and scales")
+    func parametersOfTestControls() async throws {
+        registerTestUnits()
+        let plugin = try await HostedPlugin.load(PluginID(type: "aufx", subtype: "PlCt", manufacturer: "Plug"))
+        let parameters = plugin.parameters()
+        #expect(parameters.map(\.name) == ["Cutoff", "Mix", "Mode"])
+        #expect(parameters[0].range == ParameterRange(minimum: 20, maximum: 20_000, scale: .logarithmic, isStepped: false))
+        #expect(parameters[1].range == ParameterRange(minimum: 0, maximum: 1, scale: .linear, isStepped: false))
+        #expect(parameters[2].range.isStepped)
+        // The v2 bridge numbers an AUv3 parameter by itself, not by its address, so ask by the listed id.
+        #expect(plugin.parameter(parameters[1].id) == parameters[1])
+        #expect(plugin.parameter(99) == nil)
+    }
+
+    @Test("A test unit's parameters read and write through the v2 API")
+    func testControlsParametersThroughV2() async throws {
+        registerTestUnits()
+        let plugin = try await HostedPlugin.load(PluginID(type: "aufx", subtype: "PlCt", manufacturer: "Plug"))
+        // Mix is the second parameter; the v2 bridge does not use the address as its id.
+        let mix = try #require(plugin.parameters().first { $0.name == "Mix" }).id
+        var value: AudioUnitParameterValue = 0
+        AudioUnitGetParameter(plugin.audioUnit, mix, kAudioUnitScope_Global, 0, &value)
+        #expect(value == 0.5)
+        AudioUnitSetParameter(plugin.audioUnit, mix, kAudioUnitScope_Global, 0, 0.75, 0)
+        AudioUnitGetParameter(plugin.audioUnit, mix, kAudioUnitScope_Global, 0, &value)
+        #expect(value == 0.75)
+    }
+
+    @Test("Apple's delay lists its parameters")
+    func appleDelayParameters() async throws {
+        let plugin = try await HostedPlugin.load(PluginID(type: "aufx", subtype: "dely", manufacturer: "appl"))
+        let parameters = plugin.parameters()
+        #expect(!parameters.isEmpty)
+        for parameter in parameters { #expect(parameter.range.minimum < parameter.range.maximum) }
+    }
 }

@@ -88,6 +88,7 @@ private var signalEntries: [Entry] {
         Entry(unitClass: TestTempo.self, type: "aumu", subtype: "PlTp", name: "Test Tempo"),
         Entry(unitClass: TestNullPull.self, type: "aufx", subtype: "PlNl", name: "Test Null Pull"),
         Entry(unitClass: TestAllOff.self, type: "aumu", subtype: "PlOf", name: "Test All Off"),
+        Entry(unitClass: TestControls.self, type: "aufx", subtype: "PlCt", name: "Test Controls"),
     ]
 }
 
@@ -369,6 +370,48 @@ private final class TestMono: TestUnit {
         return { [unowned self] flags, timestamp, frames, _, output, _, pullBlock in
             let main = pull(scratch, bus: 0, frames: frames, flags: flags, timestamp: timestamp, pullBlock: pullBlock)
             mix(out: UnsafeMutableAudioBufferListPointer(output), frames: Int(frames), main: main, mainGain: 0.5, side: nil, sideGain: 0)
+            return noErr
+        }
+    }
+}
+
+/// aufx/PlCt/Plug: three parameters to read and write, and silent output. Tests only, so not a safe unit.
+private final class TestControls: TestUnit {
+    override class var inputBusNames: [String] { ["Input"] }
+
+    private let tree: AUParameterTree
+
+    override init(componentDescription: AudioComponentDescription, options: AudioComponentInstantiationOptions = []) throws {
+        let cutoff = AUParameterTree.createParameter(
+            withIdentifier: "cutoff", name: "Cutoff", address: 0, min: 20, max: 20_000, unit: .hertz, unitName: nil,
+            flags: [.flag_IsReadable, .flag_IsWritable, .flag_DisplayLogarithmic], valueStrings: nil, dependentParameters: nil
+        )
+        let mix = AUParameterTree.createParameter(
+            withIdentifier: "mix", name: "Mix", address: 1, min: 0, max: 1, unit: .generic, unitName: nil,
+            flags: [.flag_IsReadable, .flag_IsWritable], valueStrings: nil, dependentParameters: nil
+        )
+        let mode = AUParameterTree.createParameter(
+            withIdentifier: "mode", name: "Mode", address: 2, min: 0, max: 2, unit: .indexed, unitName: nil,
+            flags: [.flag_IsReadable, .flag_IsWritable], valueStrings: ["Off", "Soft", "Hard"], dependentParameters: nil
+        )
+        cutoff.value = 1_000
+        mix.value = 0.5
+        mode.value = 0
+        tree = AUParameterTree.createTree(withChildren: [cutoff, mix, mode])
+        try super.init(componentDescription: componentDescription, options: options)
+    }
+
+    override var parameterTree: AUParameterTree? {
+        get { tree }
+        set {}
+    }
+
+    override var internalRenderBlock: AUInternalRenderBlock {
+        return { _, _, frames, _, output, _, _ in
+            for buffer in UnsafeMutableAudioBufferListPointer(output) {
+                guard let data = buffer.mData else { continue }
+                memset(data, 0, Int(frames) * MemoryLayout<Float>.size)
+            }
             return noErr
         }
     }
