@@ -11,8 +11,10 @@ below has a check; a step is not done until its check passed.
 
 **Pushing needs the user's explicit OK** (global rule). Before step 5 ask
 one bold question that names all three pushes of this release (tag, GitHub
-Release, `main`) and, on the first release, turning on Pages, unless the user
-has already said yes to exactly that in the conversation.
+Release, `main`) and, on the first release, turning on Pages,
+plus the catalog update of step 7 (a push to `jiripisa/jiripisa.github.io` or a
+rebuild of it), unless the user has already said yes to exactly that in the
+conversation.
 
 ## First publish (one time)
 
@@ -107,6 +109,13 @@ apps' windows. Quit the app afterwards.
    (`https://jiripisa.github.io/rackmate/appcast.xml`), then
    `.build/artifacts/sparkle/Sparkle/bin/sign_update --verify <dmg> <edSignature from the live appcast>`
    must print nothing and exit 0 — the feed's signature matches the published bytes.
+
+## 7. Project catalog
+
+Only after the live checks passed: run the global `update-catalog` skill for
+vX.Y.Z. It puts Rackmate into the right section of the catalog at
+https://jiripisa.github.io/, updates its summary when this release changed what the
+app does, and publishes the catalog so the new download shows there.
 
 ## Report
 
