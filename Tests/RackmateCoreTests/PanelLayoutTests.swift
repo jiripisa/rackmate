@@ -84,6 +84,12 @@ struct PanelLayoutTests {
         #expect(PanelLayout.pluginWindowSize(frame: .zero, preferred: nil, fitting: .zero) == PanelLayout.fallbackPluginWindowSize)
     }
 
+    @Test func stripSitsUnderThePlugin() {
+        let strip = CGSize(width: 420, height: 120)
+        #expect(PanelLayout.pluginWindowSize(plugin: CGSize(width: 500, height: 300), strip: strip) == CGSize(width: 500, height: 420))
+        #expect(PanelLayout.pluginWindowSize(plugin: CGSize(width: 300, height: 200), strip: strip) == CGSize(width: 420, height: 320))
+    }
+
     @Test func windowsCascadeFromTheMixerAndComeBackAroundAfterSix() {
         #expect(PanelLayout.pluginWindowOffset(0) == CGPoint(x: 240, y: 90))
         #expect(PanelLayout.pluginWindowOffset(2) == CGPoint(x: 308, y: 150))

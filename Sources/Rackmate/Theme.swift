@@ -119,16 +119,21 @@ struct KeyButtonStyle: ButtonStyle {
     private static let fontSize: CGFloat = 12.5
 
     var isPrimary = false
+    /// The face of a primary key: legend, or amber for a switch that is on, as `LEARN` is.
+    var primaryFace = Color.legend
     /// `.key.replace`: takes the width it is offered, and the height of the preset it stands in for.
     var stretches = false
 
     func makeBody(configuration: Configuration) -> some View {
-        KeyLabel(label: configuration.label, isPrimary: isPrimary, stretches: stretches, isPressed: configuration.isPressed)
+        KeyLabel(
+            label: configuration.label, isPrimary: isPrimary, primaryFace: primaryFace, stretches: stretches, isPressed: configuration.isPressed
+        )
     }
 
     private struct KeyLabel<Label: View>: View {
         let label: Label
         let isPrimary: Bool
+        let primaryFace: Color
         let stretches: Bool
         let isPressed: Bool
 
@@ -155,7 +160,7 @@ struct KeyButtonStyle: ButtonStyle {
 
         @ViewBuilder private var face: some View {
             if isPrimary {
-                KeyFace(top: .legend, bottom: .legend, border: .legend, isRaised: false)
+                KeyFace(top: primaryFace, bottom: primaryFace, border: primaryFace, isRaised: false)
             } else {
                 KeyFace(top: .keyTop, bottom: .keyBottom, border: isHovered && isEnabled ? .legend : .keyBorder)
             }
