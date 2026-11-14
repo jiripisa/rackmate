@@ -65,6 +65,9 @@ final class AppModel {
     private(set) var audio: AudioSession?
     /// The plugin windows with Learn on, and the parameter each waits on.
     private(set) var learning = ControlLearning()
+    /// Which way each waiting knob of the open rack has to turn, for the MIDI CONTROL strips, as of
+    /// the last poll.
+    private(set) var takeoverHints: [ControlKey: TakeoverHint] = [:]
     /// The save question of a quit is on screen, so a second quit does not ask again.
     private(set) var isAskingToQuit = false
     /// The audio devices the system lists, which Settings looks at again while it shows.
@@ -729,12 +732,13 @@ final class AppModel {
         }
     }
 
-    /// A rack that closes has no Learn and nothing to look at.
+    /// A rack that closes has no Learn, no hints and nothing to look at.
     private func stopMIDIPoll() {
         midiPoll?.cancel()
         midiPoll = nil
         learning = ControlLearning()
         audio?.router.setLearning(false)
+        if !takeoverHints.isEmpty { takeoverHints = [:] }
     }
 
     private func pollMIDI() {
@@ -751,6 +755,9 @@ final class AppModel {
         }
         // Writing `session` redraws the mixer, even when it is dirty already, so only the first move does.
         if moved, session?.isDirty == false { session?.markChanged() }
+        // Likewise the strips, which redraw on every write of the hints.
+        let hints = router.takeoverHints()
+        if hints != takeoverHints { takeoverHints = hints }
     }
 
     private func learn(_ learned: (location: PluginLocation, mapping: ControlMapping)) {
