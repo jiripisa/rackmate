@@ -178,7 +178,7 @@ public final class MIDIRouter {
     }
 
     /// While on, the newest control change from any source, mapped or not, waits for
-    /// `takeLearnedKnob`. Off forgets it.
+    /// `takeLearnedKnob`, and no control change goes to an instrument. Off forgets it.
     public func setLearning(_ on: Bool) {
         guard !isClosed else { return }
         routing.setLearning(on)
@@ -402,7 +402,9 @@ private final class MIDIRouting: Sendable {
                     (pending.baseAddress! + count).initialize(to: entry)
                     count += 1
                 }
-                if !isMapped { route(status: status, data1: controller, data2: value, fromSource: source, in: &state) }
+                // While learning, an instrument that answers the knob itself would report a touch of its
+                // own parameter, and that would take the knob instead of the one the owner moved.
+                if !isMapped && !state.isLearning { route(status: status, data1: controller, data2: value, fromSource: source, in: &state) }
                 generation = state.controlsGeneration
             }
             guard count > 0 else { return }

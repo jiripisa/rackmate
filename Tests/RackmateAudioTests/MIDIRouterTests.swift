@@ -830,6 +830,30 @@ struct MIDIRouterTests {
         }
     }
 
+    @Test func whileLearningNoControlChangeReachesAnInstrument() async throws {
+        try await withRouter(try await twoInstruments()) { router, _ in
+            router.setRoutes([target("A", .all, slot: 0)])
+            router.setLearning(true)
+            router.handle(controlChange(74, 64), fromSource: "A", at: 0)
+            #expect(router.eventCount(channel: channelID(ofSlot: 0)) == 0)
+            #expect(router.takeLearnedKnob() == knob74)
+
+            router.handle(noteOnChannel1, fromSource: "A", at: 0)
+            #expect(router.eventCount(channel: channelID(ofSlot: 0)) == 1)
+        }
+    }
+
+    @Test func afterLearningControlChangesGoAgain() async throws {
+        try await withRouter(try await twoInstruments()) { router, _ in
+            router.setRoutes([target("A", .all, slot: 0)])
+            router.setLearning(true)
+            router.handle(controlChange(74, 64), fromSource: "A", at: 0)
+            router.setLearning(false)
+            router.handle(controlChange(74, 64), fromSource: "A", at: 0)
+            #expect(router.eventCount(channel: channelID(ofSlot: 0)) == 1)
+        }
+    }
+
     @Test func closingDropsTheControlsAndLearning() async throws {
         let plugin = try await testControls()
         let mix = try parameter("Mix", of: plugin)
