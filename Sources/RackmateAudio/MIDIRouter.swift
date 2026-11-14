@@ -77,7 +77,9 @@ public struct ControlWrite: Sendable {
 /// a source that went silent without a Stop, and then only a Start or Continue starts it again.
 ///
 /// A control change that matches a knob of `setControls` goes to no instrument. It sets the knob's
-/// parameters instead, from the CoreMIDI thread as well, once each has taken over (`Takeover`).
+/// parameters instead, from the CoreMIDI thread as well, once each has taken over (`Takeover`). A
+/// parameter that moved another way since the knob last wrote it, such as by a program change or the
+/// plugin's own modulation, makes the knob wait again; the knob sees that at its next move.
 ///
 /// The router does not own the engine, and must go before the engine does.
 @MainActor
@@ -159,8 +161,8 @@ public final class MIDIRouter {
     }
 
     /// Applies at once, like `setRoutes`. A target with the node, parameter and knob of one in the
-    /// table keeps its takeover and a move `takeMovedNodes` has not reported yet; any other waits for
-    /// its parameter.
+    /// table keeps its takeover and a move `takeMovedNodes` has not reported yet, and while its plugin
+    /// stays, what it wrote last; any other waits for its parameter.
     public func setControls(_ targets: [ControlTarget]) {
         guard !isClosed else { return }
         routing.setControls(targets)
@@ -277,9 +279,9 @@ final class SourceTag: Sendable {
 /// change, or the test's thread for a `handle` in a test. Every push is under the lock, so none of
 /// these can overlap.
 ///
-/// The control table is the one thing the CoreMIDI thread changes in place: takeover, moved flags
-/// and the learned knob are values in it, made on the main actor, so nothing is made under the lock.
-/// Nothing but `State` holds the table, or the first change would copy it. A control change calls
+/// The control table is the one thing the CoreMIDI thread changes in place: takeover, moved flags,
+/// last writes and the learned knob are values in it, made on the main actor, so nothing is made
+/// under the lock. Nothing but `State` holds the table, or the first change would copy it. A control change calls
 /// into Audio Units, which take locks of their own, so it never does under this one: it notes its
 /// parameters and retains their plugins under the lock, reads their values outside it, decides under
 /// the lock again, and writes outside it. A table replaced meanwhile writes nothing, but a write that
@@ -292,6 +294,15 @@ private final class MIDIRouting: Sendable {
         var takeover = Takeover()
         /// Set when the knob wrote, cleared by `takeMovedNodes`.
         var moved = false
+        /// What the knob wrote last, while it follows. A value read back that is further from it than
+        /// one knob step means the parameter changed another way, so the knob waits again. Plugins that
+        /// round what they read back stay within the step.
+        var lastWritten: Float?
+
+        mutating func rearm() {
+            takeover.rearm()
+            lastWritten = nil
+        }
 
         func isSame(as other: ControlTarget) -> Bool {
             target.node == other.node && target.parameter == other.parameter && target.knob.isSame(as: other.knob)
@@ -420,11 +431,15 @@ private final class MIDIRouting: Sendable {
                     pending[index].index = -1
                     guard isSameTable, let write = state.controls[control].target.write else { continue }
                     let current = write.range.fraction(of: pending[index].value)
+                    if let last = state.controls[control].lastWritten, abs(current - write.range.fraction(of: last)) > 1.0 / 127 {
+                        state.controls[control].rearm()
+                    }
                     guard state.controls[control].takeover.follow(knob: value, currentFraction: current, from: write.from, to: write.to)
                     else { continue }
                     pending[index].value = write.range.value(atFraction: ControlMapping.fraction(forKnob: value, from: write.from, to: write.to))
                     pending[index].index = Int32(control)
                     state.controls[control].moved = true
+                    state.controls[control].lastWritten = pending[index].value
                 }
             }
 
@@ -444,11 +459,15 @@ private final class MIDIRouting: Sendable {
     func setControls(_ targets: [ControlTarget]) {
         var replaced = targets.map { Control(target: $0) }
         state.withLock { state in
-            // A target that stays keeps its takeover and its move. Only values move here, nothing is made.
+            // A target that stays keeps its takeover and its move, and its last write while its plugin
+            // stays. Only values move here, nothing is made.
             for index in replaced.indices {
                 guard let old = state.controls.firstIndex(where: { $0.isSame(as: replaced[index].target) }) else { continue }
                 replaced[index].takeover = state.controls[old].takeover
                 replaced[index].moved = state.controls[old].moved
+                if replaced[index].target.write?.plugin === state.controls[old].target.write?.plugin {
+                    replaced[index].lastWritten = state.controls[old].lastWritten
+                }
             }
             swap(&state.controls, &replaced)
             state.controlsGeneration &+= 1
@@ -459,7 +478,7 @@ private final class MIDIRouting: Sendable {
         state.withLock { state in
             for index in state.controls.indices where state.controls[index].target.node == node {
                 if let parameter, state.controls[index].target.parameter != parameter { continue }
-                state.controls[index].takeover.rearm()
+                state.controls[index].rearm()
             }
         }
     }

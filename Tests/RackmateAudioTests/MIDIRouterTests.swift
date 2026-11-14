@@ -112,6 +112,12 @@ private func set(_ parameter: PluginParameter, of plugin: HostedPlugin, to value
     AudioUnitSetParameter(plugin.audioUnit, parameter.id, kAudioUnitScope_Global, 0, value, 0)
 }
 
+/// The way a sequencer's program change or the plugin's own modulation would: not through the router.
+private func setElsewhere(_ parameter: PluginParameter, of plugin: HostedPlugin, to value: Float) {
+    var address = AudioUnitParameter(mAudioUnit: plugin.audioUnit, mParameterID: parameter.id, mScope: kAudioUnitScope_Global, mElement: 0)
+    AUParameterSet(nil, nil, &address, value, 0)
+}
+
 /// Where a knob at `position` puts a parameter mapped 0 to 1 with a linear range of 0 to 1.
 private func mixAt(_ position: Float) -> Float { position / 127 }
 
@@ -739,6 +745,42 @@ struct MIDIRouterTests {
             router.rearmControls(node: node, parameter: mix.id)
             router.handle(controlChange(74, 30), fromSource: "A", at: 0)
             #expect(abs(value(of: mix, in: plugin) - mixAt(90)) < tolerance)
+        }
+    }
+
+    @Test func aParameterMovedElsewhereMakesTheKnobWaitAgain() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        try await withRouter([]) { router, _ in
+            let node = UUID()
+            router.setControls([control(knob74, node: node, mix, of: plugin)])
+            router.handle(controlChange(74, 64), fromSource: "A", at: 0)
+            router.handle(controlChange(74, 70), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: plugin) - mixAt(70)) < tolerance)
+            _ = router.takeMovedNodes()
+
+            // 0.9 is near 114 on the knob, so a move near the old position writes nothing.
+            setElsewhere(mix, of: plugin, to: 0.9)
+            router.handle(controlChange(74, 72), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: plugin) - 0.9) < tolerance)
+            #expect(router.takeMovedNodes().isEmpty)
+
+            router.handle(controlChange(74, 120), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: plugin) - mixAt(120)) < tolerance)
+            #expect(router.takeMovedNodes() == [node])
+        }
+    }
+
+    @Test func aPluginThatRoundsWhatItReadsBackKeepsFollowing() async throws {
+        let plugin = try await testControls()
+        let mix = try parameter("Mix", of: plugin)
+        try await withRouter([]) { router, _ in
+            router.setControls([control(knob74, node: UUID(), mix, of: plugin)])
+            router.handle(controlChange(74, 64), fromSource: "A", at: 0)
+            // Rounded to two places, less than one knob step away from what the knob wrote.
+            setElsewhere(mix, of: plugin, to: 0.5)
+            router.handle(controlChange(74, 100), fromSource: "A", at: 0)
+            #expect(abs(value(of: mix, in: plugin) - mixAt(100)) < tolerance)
         }
     }
 
