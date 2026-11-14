@@ -73,4 +73,23 @@ struct ParameterWatchTests {
             #expect(touches.ids.isEmpty)
         }
     }
+
+    @Test func theWatchKeepsThePluginUntilItStops() async throws {
+        registerTestUnits()
+        let rig = Rig()
+        let router = MIDIRouter(engine: rig.engine)
+        defer { withExtendedLifetime(rig) {} }
+        weak var weakPlugin: HostedPlugin?
+        var watch: ParameterWatch?
+        do {
+            let plugin = try await loadPlugin(type: "aufx", subtype: "PlCt")
+            weakPlugin = plugin
+            watch = ParameterWatch(router: router, plugin: plugin) { _ in }
+        }
+        #expect(weakPlugin != nil)
+        watch?.stop()
+        await wait(.seconds(1)) { weakPlugin == nil }
+        #expect(weakPlugin == nil)
+        withExtendedLifetime(watch) {}
+    }
 }

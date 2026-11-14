@@ -7,7 +7,8 @@ import Foundation
 @MainActor
 public final class ParameterWatch {
     private nonisolated(unsafe) let listener: AUEventListenerRef?
-    private let audioUnit: AudioUnit
+    /// Held until the event types are removed, so the unit cannot be disposed before them.
+    private nonisolated(unsafe) var plugin: HostedPlugin?
     private let events: [AudioUnitEvent]
     private let token: UUID
     private nonisolated(unsafe) weak var router: MIDIRouter?
@@ -17,7 +18,7 @@ public final class ParameterWatch {
     public init(router: MIDIRouter, plugin: HostedPlugin, onTouch: @escaping @MainActor (AudioUnitParameterID) -> Void) {
         self.router = router
         listener = router.parameterListener
-        audioUnit = plugin.audioUnit
+        self.plugin = plugin
         token = router.addParameterHandler(for: plugin.audioUnit) { event in
             MainActor.assumeIsolated { onTouch(event.mArgument.mParameter.mParameterID) }
         }
@@ -42,8 +43,12 @@ public final class ParameterWatch {
         guard let router else { return }
         self.router = nil
         router.removeParameterHandler(token)
-        guard let listener else { return }
+        guard let listener else {
+            plugin = nil
+            return
+        }
         for var event in events { AUEventListenerRemoveEventType(listener, nil, &event) }
+        plugin = nil
     }
 
     /// Can run on any thread; the removal goes to the main one, like a plugin's teardown does.
@@ -54,10 +59,12 @@ public final class ParameterWatch {
         nonisolated(unsafe) let listener = listener
         let events = events
         let token = token
+        let plugin = plugin
         let remove: @Sendable () -> Void = {
             MainActor.assumeIsolated {
                 router.removeParameterHandler(token)
                 if let listener { for var event in events { AUEventListenerRemoveEventType(listener, nil, &event) } }
+                withExtendedLifetime(plugin) {}
             }
         }
         if Thread.isMainThread { remove() } else { DispatchQueue.main.async { remove() } }
