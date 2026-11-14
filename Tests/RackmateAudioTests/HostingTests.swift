@@ -248,4 +248,16 @@ struct HostingTests {
         #expect(!parameters.isEmpty)
         for parameter in parameters { #expect(parameter.range.minimum < parameter.range.maximum) }
     }
+
+    @Test("A parameter keeps its id from one load to the next, and from one run to the next")
+    func parameterIdsAreStable() async throws {
+        registerTestUnits()
+        let id = PluginID(type: "aufx", subtype: "PlCt", manufacturer: "Plug")
+        let first = try await HostedPlugin.load(id).parameters().map(\.id)
+        let second = try await HostedPlugin.load(id).parameters().map(\.id)
+        #expect(first == second)
+        // The v2 bridge derives these from the parameter identifiers, not the addresses. Pinned, so a run in a
+        // new process shows they survive a restart (a mapping in a rack file depends on it).
+        #expect(first == [4_149_505_964, 193_499_283, 2_090_515_018])
+    }
 }
